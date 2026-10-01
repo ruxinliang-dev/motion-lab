@@ -434,7 +434,7 @@
          Drag the handle on the left edge to slide the boundary between a hot ground (top) and a cool one (bottom) up and down the
          strip: where the strip sits against the warm ground it reads darker and cooler, against the cool ground lighter and warmer.
          Tap the strip to see its colour value, which stays the same however the ground moves. */
-      var STRIP = '#ff6d00', HOT = [255, 61, 0], COOL = [184, 207, 216];
+      var STRIP = '#fb4f24', HOT = [200, 50, 220], COOL = [251, 79, 36];     /* HOT = the ring, COOL = the ground (and the centre) */
       var HOT_T = HOT.slice(), COOL_T = COOL.slice();
       /* The ground follows the strip's colour: above, the same hue pushed hotter and more saturated; below, a pale, quiet version of the
          opposite hue. That is the pairing in the classic demonstration: the strip is identical, the two grounds pull it apart. */
@@ -454,14 +454,15 @@
         return [f(h + 1 / 3), f(h), f(h - 1 / 3)];
       }
       function groundFor(hex) {
-        var hsl = rgbToHsl(toRgb(hex)), h = hsl[0], sat = hsl[1], l = hsl[2];
-        var neutral = sat < 0.12;                       /* a grey strip: warm ground above, cool below */
-        var hot = neutral ? hslToRgb(18, 1, 0.5) : hslToRgb(h - 8, 1, Math.max(0.34, Math.min(0.55, l - 0.06)));
-        var cool = neutral ? hslToRgb(200, 0.22, 0.78) : hslToRgb(h + 172, 0.22, 0.78);
-        return [hot, cool];
+        /* the ring is the picked colour's hue turned about a third of the way round, vivid, at about the same lightness: close
+           enough in lightness that the soft edges read as haze rather than as outlines */
+        var hsl = rgbToHsl(toRgb(hex)), h = hsl[0], l = hsl[2];
+        var ringL = Math.max(0.46, Math.min(0.6, l));
+        var ring = hslToRgb(h + 100, 0.9, ringL);
+        return [ring, toRgb(hex)];
       }
       /* a row of swatches and a full colour picker sit over the lower edge of the ground: choose what colour the strip is */
-      var PRESETS = ['#ff6d00', '#00b894', '#7a5cff', '#ffd400', '#e91e63', '#2d3436'];
+      var PRESETS = ['#fb4f24', '#ffe0c4', '#2f6bff', '#00b894', '#e91e63', '#2d3436'];
       var bar = document.createElement('div');
       bar.style.cssText = 'position:absolute;left:50%;bottom:30px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;' +
         'padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2;touch-action:manipulation';
@@ -542,20 +543,23 @@
         if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r); else ctx.rect(x, y, bw, bh);
         ctx.clip();
 
-        /* the ground: hot above the boundary, cool below, blended through a soft band around it */
-        var g = ctx.createLinearGradient(0, y, 0, y + bh);
-        var half = 0.22;
-        for (var i = 0; i <= 20; i++) {
-          var p = i / 20, k = Math.max(0, Math.min(1, (p - (S.y - half)) / (half * 2)));
-          k = k * k * (3 - 2 * k);
-          g.addColorStop(p, mixc(HOT, COOL, k));
+        /* concentric rounded squares with no edges: the colour at each distance from the middle is the ground colour, blended toward the
+           ring colour by a soft bump. The ring sits where the handle puts it. The centre and the outside are the SAME colour. */
+        var rho = 0.18 + 0.5 * S.y, sig = 0.17, N = 44;
+        var half = Math.min(bw, bh) / 2, ccx = x + bw / 2, ccy = y + bh / 2;
+        ctx.fillStyle = mixc(COOL, COOL, 0); ctx.fillRect(x, y, bw, bh);
+        for (var q = N; q >= 1; q--) {
+          var dn = q / N;                               /* 1 at the outer edge, 0 at the middle */
+          var k = Math.exp(-((dn - rho) * (dn - rho)) / (2 * sig * sig));
+          var hh = half * dn * 1.45;                    /* reach the corners at dn = 1 */
+          var rr = Math.min(hh, hh * 0.55);
+          ctx.fillStyle = mixc(COOL, HOT, k);
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(ccx - hh, ccy - hh, hh * 2, hh * 2, rr); else ctx.rect(ccx - hh, ccy - hh, hh * 2, hh * 2);
+          ctx.fill();
         }
-        ctx.fillStyle = g; ctx.fillRect(x, y, bw, bh);
-
-        /* the strip: one colour, always */
-        var sw = Math.max(8, bw * 0.16), sx = x + (bw - sw) / 2, sy0 = y + bh * 0.16, sy1 = y + bh * 0.84;
-        geom.sx = sx; geom.sw = sw; geom.sy0 = sy0; geom.sy1 = sy1;
-        ctx.fillStyle = STRIP; ctx.fillRect(sx, sy0, sw, sy1 - sy0);
+        var cs = half * 0.5;
+        geom.sx = ccx - cs; geom.sw = cs * 2; geom.sy0 = ccy - cs; geom.sy1 = ccy + cs;
 
         /* the handle, on the left edge of the ground */
         var hy = y + bh * S.y;
@@ -568,9 +572,9 @@
         /* tap the strip: the value that never moves */
         if (S.show > 0) {
           var mono = tok('--mono') || 'ui-monospace, monospace';
-          var lab = STRIP.toUpperCase() + ' \u00b7 always';
+          var lab = STRIP.toUpperCase() + ' \u00b7 centre = edge';
           ctx.font = '600 11px ' + mono; ctx.textBaseline = 'middle';
-          var lw = ctx.measureText(lab).width + 18, lx = x + bw / 2 - lw / 2, ly = (sy0 + sy1) / 2 - 11;
+          var lw = ctx.measureText(lab).width + 18, lx = x + bw / 2 - lw / 2, ly = ccy - 11;
           ctx.globalAlpha = Math.min(1, S.show * 2);
           ctx.fillStyle = 'rgba(0,0,0,.65)';
           ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(lx, ly, lw, 22, 11); else ctx.rect(lx, ly, lw, 22); ctx.fill();
@@ -582,7 +586,7 @@
         /* a line that says what the eye is doing, in the corner the tile's own label leaves free */
         ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';
-        ctx.fillText(S.y > 0.5 ? 'hot ground: strip reads cooler' : 'cool ground: strip reads warmer', w - 14, 20);
+        ctx.fillText('drag \u2195 the ring \u00b7 tap the centre', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
