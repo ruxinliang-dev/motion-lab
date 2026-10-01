@@ -397,14 +397,18 @@
           ctx.fillText(txt, lx + 21, ly + th / 2 + 0.5);
           ctx.textBaseline = 'alphabetic';
         }
-        /* the hint stays in the top-left corner, under the word Motion, for as long as the tile is on screen */
-        ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
-        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.5 : 0.78; ctx.textAlign = 'left';
-        ctx.fillText('tap \u2192 drop a shape', 16, 56);
-        ctx.fillText('hold \u2192 see its colour, let go to drop', 16, 72);
-        ctx.fillText('drag a shape \u2192 throw it', 16, 88);
-        ctx.fillText('double-tap \u2192 clear', 16, 104);
-        ctx.globalAlpha = 1;
+        /* the hint sits at the top centre, under the word Motion's row, for as long as the tile is on screen; a short tile gets one line */
+        ctx.font = '500 ' + (h < 200 ? 10 : 11) + 'px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.5 : 0.78; ctx.textAlign = 'center';
+        if (h < 200) {
+          ctx.fillText('tap drop · hold colour · drag throw', w / 2, 24);
+        } else {
+          ctx.fillText('tap → drop a shape', w / 2, 26);
+          ctx.fillText('hold → see its colour, let go to drop', w / 2, 42);
+          ctx.fillText('drag a shape → throw it', w / 2, 58);
+          ctx.fillText('double-tap → clear', w / 2, 74);
+        }
+        ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
         host.removeEventListener('pointerdown', down);
@@ -424,13 +428,42 @@
     id: 'color',
     label: 'Color',
     span: 'tile--1x2',
-    math: 'one strip, one colour; only the ground moves',
+    math: 'one strip, one colour',
     mount: function (host) {
       /* Simultaneous contrast, as a toy. The strip down the middle is ONE colour and never changes; only the ground behind it does.
          Drag the handle on the left edge to slide the boundary between a hot ground (top) and a cool one (bottom) up and down the
          strip: where the strip sits against the warm ground it reads darker and cooler, against the cool ground lighter and warmer.
          Tap the strip to see its colour value, which stays the same however the ground moves. */
       var STRIP = '#ff6d00', HOT = [255, 61, 0], COOL = [184, 207, 216];
+      /* a row of swatches and a full colour picker sit over the lower edge of the ground: choose what colour the strip is */
+      var PRESETS = ['#ff6d00', '#00b894', '#7a5cff', '#ffd400', '#e91e63', '#2d3436'];
+      var bar = document.createElement('div');
+      bar.style.cssText = 'position:absolute;left:50%;bottom:30px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;' +
+        'padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2;touch-action:manipulation';
+      var chips = [];
+      function setStrip(c) {
+        STRIP = c.toLowerCase(); S.show = 1;
+        chips.forEach(function (ch) { ch.style.boxShadow = ch.dataset.c === STRIP ? '0 0 0 2px #111' : '0 0 0 1px rgba(0,0,0,.25)'; });
+        if (custom) custom.value = STRIP;
+      }
+      var narrow = host.clientWidth && host.clientWidth < 240;
+      var CH = narrow ? 14 : 18;
+      if (narrow) { PRESETS = PRESETS.slice(0, 4); bar.style.bottom = '22px'; bar.style.gap = '4px'; bar.style.padding = '4px 6px'; }
+      PRESETS.forEach(function (c) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.dataset.c = c; b.title = c; b.setAttribute('aria-label', 'Strip colour ' + c);
+        b.style.cssText = 'width:' + CH + 'px;height:' + CH + 'px;border-radius:50%;border:0;padding:0;cursor:pointer;background:' + c;
+        b.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+        b.addEventListener('click', function (e) { e.stopPropagation(); setStrip(c); });
+        bar.appendChild(b); chips.push(b);
+      });
+      var custom = document.createElement('input');
+      custom.type = 'color'; custom.value = STRIP; custom.title = 'Pick any colour'; custom.setAttribute('aria-label', 'Pick any colour');
+      custom.style.cssText = 'width:' + (CH + 4) + 'px;height:' + (CH + 4) + 'px;border:0;padding:0;border-radius:50%;background:none;cursor:pointer;overflow:hidden';
+      custom.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      custom.addEventListener('input', function () { setStrip(custom.value); });
+      bar.appendChild(custom);
+      host.appendChild(bar);
       var S = { y: 0.5, on: false, hover: false, show: 0, ty: 0.5 };
       var geom = { x: 0, y: 0, bw: 1, bh: 1, sx: 0, sw: 1, sy0: 0, sy1: 1 };
       function norm(e) {
@@ -441,8 +474,10 @@
         var r = host.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         return px >= geom.sx - 8 && px <= geom.sx + geom.sw + 8 && py >= geom.sy0 && py <= geom.sy1;
       }
+      setStrip(STRIP); S.show = 0;
       function d(e) {
         if (still()) return;
+        if (e.target !== host && e.target.tagName !== 'CANVAS') return;
         if (onStrip(e)) { S.show = 1; e.preventDefault(); return; }
         S.on = true; S.hover = true; S.ty = norm(e);
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
@@ -529,6 +564,7 @@
         host.removeEventListener('pointerup', u);
         host.removeEventListener('pointercancel', u);
         host.removeEventListener('pointerleave', lv);
+        if (bar.parentNode) bar.parentNode.removeChild(bar);
         if (stop) stop();
       };
     }
