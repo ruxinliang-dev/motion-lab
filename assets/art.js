@@ -199,12 +199,16 @@
         ctx.restore();
       }
 
-      function spawn(x, y, w, h) {
+      function make(x, y, w, h) {
         var base = Math.max(14, Math.min(w, h) * 0.075);
         var r = base * (0.8 + Math.random() * 0.7);
-        bodies.push({ x: x, y: y, vx: (Math.random() - 0.5) * 120, vy: 0, r: r,
-          rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 4,
-          kind: pick(KINDS), col: colour() });
+        return { x: x, y: y, vx: 0, vy: 0, r: r,
+          rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 3,
+          kind: pick(KINDS), col: colour() };
+      }
+      function release(b) {
+        b.vx = (Math.random() - 0.5) * 60; b.vy = 0;
+        bodies.push(b);
         if (bodies.length > MAXN) bodies.shift();
       }
 
@@ -297,40 +301,56 @@
       var dim = { w: 0, h: 0 };
       var pressT = 0, pressX = 0, pressY = 0, shown = null, shownT = 0;
       function clearPress() { if (pressT) { clearTimeout(pressT); pressT = 0; } }
+      var pending = null;      /* a new shape being held, not yet dropped */
       function down(e) {
         if (still()) return;
         var p = local(e); ptr.x = p.x; ptr.y = p.y; ptr.vx = ptr.vy = 0; ptr.t = performance.now();
         var b = hit(p.x, p.y);
-        touched = true;
-        if (!b) {
-          /* a tap on empty space drops a shape right there and lets go of it */
-          spawn(p.x, p.y, dim.w, dim.h);
-          e.preventDefault();
-          return;
-        }
-        /* a tap on a shape picks it up; held still for half a second it tells you its colour */
-        drag = b; shown = null; pressX = p.x; pressY = p.y;
+        touched = true; shown = null; pressX = p.x; pressY = p.y;
         clearPress();
-        pressT = setTimeout(function () { pressT = 0; if (drag === b) { shown = b; shownT = 0; } }, 480);
+        if (!b) {
+          /* on empty space the new shape is held under the finger; it only falls when you let go (a quick tap is just a short hold) */
+          pending = make(p.x, p.y, dim.w, dim.h);
+          pressT = setTimeout(function () { pressT = 0; if (pending) { shown = pending; shownT = 0; } }, 480);
+        } else {
+          drag = b;
+          pressT = setTimeout(function () { pressT = 0; if (drag === b) { shown = b; shownT = 0; } }, 480);
+        }
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
         e.preventDefault();
       }
       function move(e) {
-        if (!drag) return;
+        if (!drag && !pending) return;
         var p = local(e), now = performance.now(), dtm = Math.max(1, now - ptr.t) / 1000;
         if (pressT && Math.hypot(p.x - pressX, p.y - pressY) > 7) clearPress();
         ptr.vx = (p.x - ptr.x) / dtm * 0.6 + ptr.vx * 0.4;
         ptr.vy = (p.y - ptr.y) / dtm * 0.6 + ptr.vy * 0.4;
         ptr.x = p.x; ptr.y = p.y; ptr.t = now;
+        if (pending) { pending.x = p.x; pending.y = p.y; }
       }
       function up() {
         clearPress();
+        if (pending) {
+          /* let go: it drops and the gesture is over, nothing stays attached to the pointer */
+          var d = pending; pending = null;
+          shownT = shown === d ? 1.4 : 0;
+          release(d);
+          return;
+        }
         if (!drag) return;
         var c = function (v) { return Math.max(-1700, Math.min(1700, v)); };
         if (shown === drag) { drag.vx = 0; drag.vy = 0; shownT = 1.4; }   /* the label lingers a moment after letting go */
         else { drag.vx = c(ptr.vx); drag.vy = c(ptr.vy); drag.vr = drag.vx / drag.r; }
         drag = null;
       }
+      /* the Color tile sends colours here: each one arrives as a new shape dropped from the top */
+      function onColour(e) {
+        if (!dim.w || !e.detail || !e.detail.col) return;
+        var b = make(dim.w * (0.12 + 0.76 * Math.random()), 0, dim.w, dim.h);
+        b.y = b.r; b.col = e.detail.col; b.pop = 1;
+        release(b);
+      }
+      window.addEventListener('labcolour', onColour);
       host.style.touchAction = 'none';
       host.style.cursor = 'pointer';
       host.addEventListener('pointerdown', down);
@@ -355,9 +375,10 @@
         lastT = t;
         step(dt, w, h);
         for (var gi = 0; gi < bodies.length; gi++) drawBody(ctx, bodies[gi]);
+        if (pending) { pending.pop = 0.6; drawBody(ctx, pending); }
         if (shown) {
           if (shownT > 0) { shownT -= dt; if (shownT <= 0) shown = null; }
-          if (shown && bodies.indexOf(shown) < 0) shown = null;
+          if (shown && shown !== pending && bodies.indexOf(shown) < 0) shown = null;
         }
         if (shown) {
           var txt = String(shown.col).toUpperCase();
@@ -378,8 +399,8 @@
         ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.5 : 0.78; ctx.textAlign = 'left';
         ctx.fillText('tap \u2192 drop a shape', 16, 56);
-        ctx.fillText('drag \u2192 throw it', 16, 72);
-        ctx.fillText('hold \u2192 see its colour', 16, 88);
+        ctx.fillText('hold \u2192 see its colour, let go to drop', 16, 72);
+        ctx.fillText('drag a shape \u2192 throw it', 16, 88);
         ctx.fillText('double-tap \u2192 clear', 16, 104);
         ctx.globalAlpha = 1;
       });
@@ -388,6 +409,7 @@
         host.removeEventListener('pointermove', move);
         host.removeEventListener('pointerup', up);
         host.removeEventListener('pointercancel', up);
+        window.removeEventListener('labcolour', onColour);
         if (stopScene) stopScene();
       };
     }
@@ -403,7 +425,34 @@
     span: 'tile--1x2',
     math: 'mix(a, b, t) where t = s²(3 - 2s)',
     mount: function (host) {
-      return scene(host, function (ctx, w, h, t) {
+      /* Drag along the ramp to pick a colour; let go and it is thrown into the Motion tile as a new shape. The colour read here is the same
+         one the gradient is drawn with (sampled off the same smoothstep), so what you pick is what you see. */
+      var pick = { on: false, hover: false, y: 0.5, sent: 0 };
+      var geom = { x: 0, y: 0, bw: 1, bh: 1 };
+      function hexOf(rgbStr) {
+        var m = String(rgbStr).match(/\d+/g) || [0, 0, 0];
+        return '#' + [0, 1, 2].map(function (i) { return ('0' + (+m[i]).toString(16)).slice(-2); }).join('');
+      }
+      function colourAt(p) { return hexOf(blue(0.10 + 0.74 * (1 - smoothstep(p)))); }
+      function norm(e) {
+        var r = host.getBoundingClientRect();
+        return Math.max(0, Math.min(1, (e.clientY - r.top - geom.y) / geom.bh));
+      }
+      function d(e) { if (still()) return; pick.on = true; pick.hover = true; pick.y = norm(e); try { host.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); }
+      function mv(e) { pick.hover = true; if (pick.on || e.pointerType === 'mouse') pick.y = norm(e); }
+      function u() {
+        if (!pick.on) return;
+        pick.on = false; pick.sent = 1;
+        window.dispatchEvent(new CustomEvent('labcolour', { detail: { col: colourAt(pick.y) } }));
+      }
+      function lv() { if (!pick.on) pick.hover = false; }
+      host.style.touchAction = 'none'; host.style.cursor = 'crosshair';
+      host.addEventListener('pointerdown', d);
+      host.addEventListener('pointermove', mv);
+      host.addEventListener('pointerup', u);
+      host.addEventListener('pointercancel', u);
+      host.addEventListener('pointerleave', lv);
+      var stop = scene(host, function (ctx, w, h, t) {
         ctx.clearRect(0, 0, w, h);
         /* During the first layout pass the host can be a pixel wide. Clamp the
            inset so the box never goes negative and roundRect never sees a
@@ -412,6 +461,7 @@
         var x = m, y = m;
         var bw = Math.max(1, w - m * 2), bh = Math.max(1, h - m * 2);
         var r = Math.max(0, Math.min(20, bw * 0.12));
+        geom.x = x; geom.y = y; geom.bw = bw; geom.bh = bh;
 
         /* 24 stops sampled off the curve, so the midpoint sits where the
            formula puts it rather than where a colour picker did */
@@ -444,8 +494,46 @@
           ctx.arc(cx, py, k % 2 ? 2.6 : 3.6, 0, 6.2832);
           ctx.fill();
         }
+        /* the picker: a ring with the colour it would send, and a hex label, while a finger or the mouse is on the ramp */
+        if (pick.hover || pick.on) {
+          var py2 = y + bh * pick.y, col = colourAt(pick.y);
+          ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(cx, py2, pick.on ? 11 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
+          ctx.font = '600 11px ' + (tok('--mono') || 'ui-monospace, monospace');
+          var lab = col.toUpperCase(), lw = ctx.measureText(lab).width + 16;
+          var lx = Math.min(x + bw - lw - 8, cx + 18);
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(lx, py2 - 10, lw, 20, 10); else ctx.rect(lx, py2 - 10, lw, 20);
+          ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(lab, lx + 8, py2 + 0.5);
+          ctx.textBaseline = 'alphabetic';
+        }
+        /* after letting go, a ring leaves the ramp and fades: the colour has been sent */
+        if (pick.sent > 0) {
+          var ps2 = y + bh * pick.y;
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.8 * pick.sent) + ')'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, ps2, 11 + (1 - pick.sent) * 26, 0, 6.2832); ctx.stroke();
+          pick.sent = Math.max(0, pick.sent - 0.045);
+        }
         ctx.restore();
+        /* a line of instruction, in the corner the tile's own label leaves free */
+        if (!pick.on) {
+          ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
+          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
+          ctx.fillText('drag along \u2192 send a colour to Motion', w - 14, 20);
+          ctx.globalAlpha = 1; ctx.textAlign = 'left';
+        }
       });
+      return function () {
+        host.removeEventListener('pointerdown', d);
+        host.removeEventListener('pointermove', mv);
+        host.removeEventListener('pointerup', u);
+        host.removeEventListener('pointercancel', u);
+        host.removeEventListener('pointerleave', lv);
+        if (stop) stop();
+      };
     }
   };
 
