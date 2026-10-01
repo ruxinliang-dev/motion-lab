@@ -424,165 +424,106 @@
     id: 'color',
     label: 'Color',
     span: 'tile--1x2',
-    math: 'mix(a, b, t) where t = s²(3 - 2s)',
+    math: 'one strip, one colour; only the ground moves',
     mount: function (host) {
-      /* A small game of its own: a swatch shows a colour taken from somewhere on the ramp; drag the ring along the ramp to where that colour
-         lives and let go. Five rounds. The score is how close you landed (on the ramp, not on the screen), 100 for dead on. What you
-         read is the same function the gradient is drawn with, so the answer is always exactly on the ramp. */
-      var ROUNDS = 5;
-      var G = { round: 1, total: 0, target: Math.random(), phase: 'play', res: null, resT: 0, on: false, hover: false, y: 0.5, best: 0, done: [] };
-      var geom = { x: 0, y: 0, bw: 1, bh: 1 };
-      var timer = 0;
-      function hexOf(rgbStr) {
-        var m = String(rgbStr).match(/\d+/g) || [0, 0, 0];
-        return '#' + [0, 1, 2].map(function (i) { return ('0' + (+m[i]).toString(16)).slice(-2); }).join('');
-      }
-      function colourAt(p) { return hexOf(blue(0.10 + 0.74 * (1 - smoothstep(p)))); }
+      /* Simultaneous contrast, as a toy. The strip down the middle is ONE colour and never changes; only the ground behind it does.
+         Drag the handle on the left edge to slide the boundary between a hot ground (top) and a cool one (bottom) up and down the
+         strip: where the strip sits against the warm ground it reads darker and cooler, against the cool ground lighter and warmer.
+         Tap the strip to see its colour value, which stays the same however the ground moves. */
+      var STRIP = '#ff6d00', HOT = [255, 61, 0], COOL = [184, 207, 216];
+      var S = { y: 0.5, on: false, hover: false, show: 0, ty: 0.5 };
+      var geom = { x: 0, y: 0, bw: 1, bh: 1, sx: 0, sw: 1, sy0: 0, sy1: 1 };
       function norm(e) {
         var r = host.getBoundingClientRect();
-        return Math.max(0, Math.min(1, (e.clientY - r.top - geom.y) / geom.bh));
+        return Math.max(0.04, Math.min(0.96, (e.clientY - r.top - geom.y) / geom.bh));
       }
-      function nextTarget(prev) {
-        var t; do { t = 0.06 + Math.random() * 0.88; } while (Math.abs(t - prev) < 0.18);
-        return t;
+      function onStrip(e) {
+        var r = host.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+        return px >= geom.sx - 8 && px <= geom.sx + geom.sw + 8 && py >= geom.sy0 && py <= geom.sy1;
       }
-      function restart() { G.round = 1; G.total = 0; G.done = []; G.target = nextTarget(-1); G.phase = 'play'; G.res = null; }
       function d(e) {
         if (still()) return;
-        if (G.phase === 'over') { restart(); e.preventDefault(); return; }
-        if (G.phase !== 'play') return;
-        G.on = true; G.hover = true; G.y = norm(e);
+        if (onStrip(e)) { S.show = 1; e.preventDefault(); return; }
+        S.on = true; S.hover = true; S.ty = norm(e);
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
         e.preventDefault();
       }
-      function mv(e) { if (G.phase !== 'play') return; G.hover = true; if (G.on || e.pointerType === 'mouse') G.y = norm(e); }
-      function u() {
-        if (!G.on || G.phase !== 'play') { G.on = false; return; }
-        G.on = false;
-        var dist = Math.abs(G.y - G.target);
-        var pts = Math.max(0, Math.round(100 - dist * 260));
-        G.total += pts; G.best = Math.max(G.best, pts);
-        G.res = { pts: pts, dist: dist, at: G.y, perfect: dist < 0.012 };
-        G.done.push(pts);
-        G.phase = 'result'; G.resT = 1;
-        clearTimeout(timer);
-        timer = setTimeout(function () {
-          if (G.round >= ROUNDS) { G.phase = 'over'; G.res = null; }
-          else { G.round++; G.target = nextTarget(G.target); G.phase = 'play'; G.res = null; }
-        }, 1500);
-      }
-      function lv() { if (!G.on) G.hover = false; }
-      host.style.touchAction = 'none'; host.style.cursor = 'crosshair';
+      function mv(e) { S.hover = true; if (S.on) S.ty = norm(e); }
+      function u() { S.on = false; }
+      function lv() { if (!S.on) S.hover = false; }
+      host.style.touchAction = 'none'; host.style.cursor = 'ns-resize';
       host.addEventListener('pointerdown', d);
       host.addEventListener('pointermove', mv);
       host.addEventListener('pointerup', u);
       host.addEventListener('pointercancel', u);
       host.addEventListener('pointerleave', lv);
-      function pill(ctx, x, y, w, h, fill) {
-        ctx.fillStyle = fill; ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, y, w, h, h / 2); else ctx.rect(x, y, w, h);
-        ctx.fill();
+      function mixc(a, b, t) {
+        return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * t); }).join(',') + ')';
       }
+      var last = 0;
       var stop = scene(host, function (ctx, w, h, t) {
         ctx.clearRect(0, 0, w, h);
-        /* During the first layout pass the host can be a pixel wide. Clamp the
-           inset so the box never goes negative and roundRect never sees a
-           negative radius. */
+        var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
+        /* the boundary eases toward the pointer, and drifts slowly by itself until someone touches it */
+        if (!S.on && !S.hover) S.ty = 0.5 + 0.28 * Math.sin(t * 0.6);
+        S.y += (S.ty - S.y) * Math.min(1, dt * 9);
+        if (S.show > 0) S.show = Math.max(0, S.show - dt * 0.55);
+
         var m = Math.min(Math.max(14, Math.min(w, h) * 0.11), w * 0.4, h * 0.4);
         var x = m, y = m;
         var bw = Math.max(1, w - m * 2), bh = Math.max(1, h - m * 2);
         var r = Math.max(0, Math.min(20, bw * 0.12));
         geom.x = x; geom.y = y; geom.bw = bw; geom.bh = bh;
 
-        /* 24 stops sampled off the curve, so the midpoint sits where the
-           formula puts it rather than where a colour picker did */
-        var g = ctx.createLinearGradient(0, y, 0, y + bh);
-        for (var i = 0; i <= 24; i++) {
-          var s = i / 24;
-          var e = smoothstep(s);
-          g.addColorStop(s, blue(0.10 + 0.74 * (1 - e)));
-        }
-
         ctx.save();
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r);
-        else ctx.rect(x, y, bw, bh);
-        ctx.fillStyle = g;
-        ctx.fill();
+        if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r); else ctx.rect(x, y, bw, bh);
         ctx.clip();
 
-        var cx = x + bw / 2;
-        ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + bh); ctx.stroke();
-        var mono = tok('--mono') || 'ui-monospace, monospace';
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-
-        if (G.phase !== 'over') {
-          /* the swatch to match, top-left of the ramp */
-          var sw = Math.min(58, bw * 0.34), sh = Math.min(34, bh * 0.1);
-          ctx.fillStyle = colourAt(G.target);
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(x + 10, y + 10, sw, sh, 8); else ctx.rect(x + 10, y + 10, sw, sh);
-          ctx.fill();
-          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.font = '600 10px ' + mono; ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
-          ctx.fillText('match this', x + 10, y + 10 + sh + 11);
-          ctx.globalAlpha = 1;
-
-          /* the ring you drag */
-          if (G.hover || G.on || G.phase === 'result') {
-            var py = y + bh * (G.phase === 'result' ? G.res.at : G.y);
-            var col = colourAt(G.phase === 'result' ? G.res.at : G.y);
-            ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.arc(cx, py, G.on ? 11 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
-          }
-
-          /* after letting go: where the colour really was, and what it was worth */
-          if (G.phase === 'result' && G.res) {
-            var ty = y + bh * G.target, pyr = y + bh * G.res.at;
-            ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
-            ctx.beginPath(); ctx.moveTo(cx, pyr); ctx.lineTo(cx, ty); ctx.stroke(); ctx.setLineDash([]);
-            ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, ty, 11, 0, 6.2832); ctx.stroke();
-            var msg = G.res.perfect ? 'perfect  +' + G.res.pts : '+' + G.res.pts;
-            ctx.font = '700 13px ' + mono;
-            var mw = ctx.measureText(msg).width + 18;
-            var mx = Math.min(x + bw - mw - 8, cx + 20), my = Math.max(y + 22, Math.min(y + bh - 22, (ty + pyr) / 2));
-            pill(ctx, mx, my - 12, mw, 24, 'rgba(0,0,0,.6)');
-            ctx.fillStyle = '#fff'; ctx.fillText(msg, mx + 9, my + 0.5);
-          }
-
-          /* score and round dots, along the foot of the ramp */
-          for (var rd = 0; rd < ROUNDS; rd++) {
-            ctx.fillStyle = rd < G.done.length ? '#fff' : 'rgba(255,255,255,.35)';
-            ctx.beginPath(); ctx.arc(x + 16 + rd * 12, y + bh - 14, 3.2, 0, 6.2832); ctx.fill();
-          }
-          ctx.font = '600 11px ' + mono; ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
-          ctx.fillText(String(G.total) + ' pts', x + bw - 10, y + bh - 14);
-          ctx.textAlign = 'left';
-        } else {
-          /* five rounds done: the total, and an invitation to go again */
-          ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x, y, bw, bh);
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#fff';
-          ctx.font = '700 ' + Math.round(Math.min(34, bw * 0.2)) + 'px ' + mono;
-          ctx.fillText(String(G.total) + ' / ' + (ROUNDS * 100), cx, y + bh * 0.42);
-          ctx.font = '500 11px ' + mono; ctx.globalAlpha = 0.85;
-          ctx.fillText('best round ' + G.best, cx, y + bh * 0.42 + 26);
-          ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 3);
-          ctx.fillText('tap to play again', cx, y + bh * 0.42 + 48);
-          ctx.globalAlpha = 1; ctx.textAlign = 'left';
+        /* the ground: hot above the boundary, cool below, blended through a soft band around it */
+        var g = ctx.createLinearGradient(0, y, 0, y + bh);
+        var half = 0.22;
+        for (var i = 0; i <= 20; i++) {
+          var p = i / 20, k = Math.max(0, Math.min(1, (p - (S.y - half)) / (half * 2)));
+          k = k * k * (3 - 2 * k);
+          g.addColorStop(p, mixc(HOT, COOL, k));
         }
-        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = g; ctx.fillRect(x, y, bw, bh);
+
+        /* the strip: one colour, always */
+        var sw = Math.max(8, bw * 0.16), sx = x + (bw - sw) / 2, sy0 = y + bh * 0.16, sy1 = y + bh * 0.84;
+        geom.sx = sx; geom.sw = sw; geom.sy0 = sy0; geom.sy1 = sy1;
+        ctx.fillStyle = STRIP; ctx.fillRect(sx, sy0, sw, sy1 - sy0);
+
+        /* the handle, on the left edge of the ground */
+        var hy = y + bh * S.y;
+        ctx.fillStyle = '#12a1c0'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x + 12, hy, S.on ? 12 : 10, 0, 6.2832); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x + 6, hy - 3); ctx.lineTo(x + 12, hy - 6); ctx.lineTo(x + 18, hy - 3);
+        ctx.moveTo(x + 6, hy + 3); ctx.lineTo(x + 12, hy + 6); ctx.lineTo(x + 18, hy + 3); ctx.stroke();
+
+        /* tap the strip: the value that never moves */
+        if (S.show > 0) {
+          var mono = tok('--mono') || 'ui-monospace, monospace';
+          var lab = STRIP.toUpperCase() + ' \u00b7 always';
+          ctx.font = '600 11px ' + mono; ctx.textBaseline = 'middle';
+          var lw = ctx.measureText(lab).width + 18, lx = x + bw / 2 - lw / 2, ly = (sy0 + sy1) / 2 - 11;
+          ctx.globalAlpha = Math.min(1, S.show * 2);
+          ctx.fillStyle = 'rgba(0,0,0,.65)';
+          ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(lx, ly, lw, 22, 11); else ctx.rect(lx, ly, lw, 22); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(lab, lx + 9, ly + 11.5);
+          ctx.globalAlpha = 1; ctx.textBaseline = 'alphabetic';
+        }
         ctx.restore();
 
-        /* the instruction, in the corner the tile's own label leaves free */
-        ctx.font = '500 10.5px ' + mono;
-        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
-        ctx.fillText(G.phase === 'over' ? 'game over' : 'round ' + G.round + ' / ' + ROUNDS + ' \u00b7 drag to match', w - 14, 20);
+        /* a line that says what the eye is doing, in the corner the tile's own label leaves free */
+        ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';
+        ctx.fillText(S.y > 0.5 ? 'hot ground: strip reads cooler' : 'cool ground: strip reads warmer', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
-        clearTimeout(timer);
         host.removeEventListener('pointerdown', d);
         host.removeEventListener('pointermove', mv);
         host.removeEventListener('pointerup', u);
