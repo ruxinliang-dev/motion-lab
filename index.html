@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ruxin Liang — Motion Lab</title>
 <meta name="description" content="A visual system drawn from formulas, eight interaction studies, and KeePlan: thirteen screens you can walk through. Everything is drawn in code and runs live in the browser.">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" href="assets/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<!-- Held invisible until the fonts and the first mount are in, then faded in once:
+     the page used to paint with fallback fonts, re-flow when each webfont arrived and
+     build eight canvases in the same breath, which read as a stutter. A timer in
+     site.js releases it regardless, so a slow font can never keep the page hidden. -->
+<style>html.booting body{opacity:0}html.booted body{transition:opacity .6s cubic-bezier(.2,.7,.2,1)}html.ready body{opacity:1;transition:none}</style>
+<script>document.documentElement.classList.add('booting');setTimeout(function(){document.documentElement.classList.remove('booting')},3500)</script>
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +26,7 @@
 <link rel="stylesheet" href="assets/site.css?v=227">
 <link rel="stylesheet" href="assets/labs.css?v=197">
 <link rel="stylesheet" href="assets/keeplan.css?v=212">
-<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=25">
+<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=26">
 <script src="assets/theme.js?v=200"></script>
 <script src="assets/type.js?v=197"></script>
 </head>
@@ -856,7 +862,7 @@
 
 <script src="assets/art.js?v=236"></script>
 <script src="assets/labs.js?v=197"></script>
-<script src="assets/site.js?v=208"></script>
+<script src="assets/site.js?v=213"></script>
 <script src="assets/keeplan.js?v=210"></script>
 <script src="assets/pager.js?v=209"></script>
 <script src="assets/disclosures.js?v=200"></script>

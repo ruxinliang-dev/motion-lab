@@ -471,3 +471,15 @@
     margin-top:calc(17.5px - var(--aw) * .0583);
   }
 }
+
+/* ---- opening / refreshing: the intro's blocks come in one after another ---- */
+@keyframes labIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html.booted .page--intro .wrap > *{animation:labIn .7s cubic-bezier(.2,.7,.2,1) both}
+html.booted .page--intro .wrap > *:nth-child(1){animation-delay:.05s}
+html.booted .page--intro .wrap > *:nth-child(2){animation-delay:.14s}
+html.booted .page--intro .wrap > *:nth-child(3){animation-delay:.23s}
+html.booted .page--intro .wrap > *:nth-child(4){animation-delay:.32s}
+html.booted .page--intro .wrap > *:nth-child(5){animation-delay:.41s}
+html.booted .page--intro .wrap > *:nth-child(n+6){animation-delay:.5s}
+:root[data-motion="off"] .page--intro .wrap > *{animation:none}
+@media (prefers-reduced-motion:reduce){html.booted .page--intro .wrap > *{animation:none}}

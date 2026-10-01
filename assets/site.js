@@ -817,3 +817,51 @@
   })();
 
 })();
+
+/* The intro note starts on the same left edge as the chapter names under it.
+   Below 641px the two already share the page gutter; above it the list can sit
+   in a column of its own, so the note's left is read off the first name. */
+(function () {
+  'use strict';
+  function align() {
+    var b = document.querySelector('.page--intro .guide a b');
+    var d = document.querySelector('.page--intro .doodle');
+    if (!b || !d) return;
+    if (!window.matchMedia('(min-width: 641px)').matches) { d.style.left = ''; return; }
+    var rb = b.getBoundingClientRect();
+    if (!rb.width) return;                       /* the intro page is not showing */
+    var op = d.offsetParent ? d.offsetParent.getBoundingClientRect() : { left: 0 };
+    d.style.left = (rb.left - op.left - 4) + 'px';   /* the note carries 4px of its own padding */
+  }
+  window.addEventListener('resize', align);
+  window.addEventListener('hashchange', function () { setTimeout(align, 60); setTimeout(align, 700); });
+  window.addEventListener('load', function () { align(); setTimeout(align, 400); });
+  if (window.ResizeObserver) {
+    var g = document.querySelector('.page--intro .guide');
+    if (g) new ResizeObserver(align).observe(g);
+  }
+})();
+
+/* Opening / refreshing: wait (briefly) for the webfonts and one painted frame, then let the page in with a short fade, and the
+   intro's own blocks one after another. If anything is slow the timer in <head> lets the page through anyway. */
+(function () {
+  'use strict';
+  var html = document.documentElement;
+  function reveal() {
+    if (!html.classList.contains('booting')) return;
+    html.classList.remove('booting');
+    html.classList.add('booted');
+    /* the fade is over after .6s; this only makes sure nothing can stay transparent if the browser never ran it */
+    setTimeout(function () { html.classList.add('ready'); }, 1500);
+  }
+  var calm = html.getAttribute('data-motion') === 'off' ||
+             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (calm) { html.classList.remove('booting'); return; }
+  var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  var cap = new Promise(function (r) { setTimeout(r, 1400); });
+  Promise.race([fonts, cap]).then(function () {
+    /* a frame after the fonts; the timer is for a tab that is not being drawn, where frames never come */
+    requestAnimationFrame(function () { requestAnimationFrame(reveal); });
+    setTimeout(reveal, 160);
+  });
+})();
