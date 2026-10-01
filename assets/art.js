@@ -586,7 +586,7 @@
         /* a line that says what the eye is doing, in the corner the tile's own label leaves free */
         ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';
-        ctx.fillText('drag ring 00b7 tap centre', w - 14, 20);
+        ctx.fillText('drag ring · tap centre', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
