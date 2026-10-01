@@ -146,7 +146,166 @@
     math: 'f(x) = 1 / (1 + e^-k(x - 0.5)),  k = 5 … 16',
     mount: function (host) {
       var ks = [5, 7, 9, 12, 16];
-      return scene(host, function (ctx, w, h, t) {
+
+      /* ---- the toy ------------------------------------------------------
+         Tap an empty spot to drop a shape, drag one to throw it. Shapes fall
+         under gravity, bounce on the floor of the plot and on each other, and
+         pile up. Colours are the six tokens of the ramp, so the toy follows the
+         light/dark switch. Every collision is a circle; the drawn shapes
+         (circle, hexagon, rounded square, flower, pill) only differ in how
+         they look. */
+      var bodies = [], drag = null, lastT = 0, touched = false, ptr = { x: 0, y: 0, vx: 0, vy: 0, t: 0 };
+      var G = 1900, MAXN = 34;
+      var KINDS = ['circle', 'hex', 'square', 'flower', 'pill'];
+      function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+      function colour() { return tok('--c' + (1 + Math.floor(Math.random() * 6))) || '#4aa3ff'; }
+
+      function drawBody(ctx, b) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        ctx.fillStyle = b.col; ctx.strokeStyle = b.col; ctx.lineJoin = 'round';
+        var r = b.r;
+        if (b.kind === 'circle') {
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
+        } else if (b.kind === 'hex') {
+          ctx.lineWidth = r * 0.34;
+          ctx.beginPath();
+          for (var i = 0; i < 6; i++) {
+            var an = i * Math.PI / 3 + Math.PI / 6, rr = r * 0.84;
+            ctx[i ? 'lineTo' : 'moveTo'](Math.cos(an) * rr, Math.sin(an) * rr);
+          }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        } else if (b.kind === 'square') {
+          var q = r * 0.78;
+          ctx.lineWidth = r * 0.5;
+          ctx.fillRect(-q, -q, q * 2, q * 2);
+          ctx.strokeRect(-q, -q, q * 2, q * 2);
+        } else if (b.kind === 'flower') {
+          var lr = r * 0.56;
+          ctx.beginPath();
+          for (var k = 0; k < 4; k++) {
+            var ak = k * Math.PI / 2 + Math.PI / 4;
+            ctx.moveTo(Math.cos(ak) * r * 0.5 + lr, Math.sin(ak) * r * 0.5);
+            ctx.arc(Math.cos(ak) * r * 0.5, Math.sin(ak) * r * 0.5, lr, 0, 6.2832);
+          }
+          ctx.moveTo(r * 0.45, 0); ctx.arc(0, 0, r * 0.45, 0, 6.2832);
+          ctx.fill();
+        } else {
+          ctx.lineWidth = r; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function spawn(x, y, w, h) {
+        var base = Math.max(14, Math.min(w, h) * 0.075);
+        var r = base * (0.8 + Math.random() * 0.7);
+        bodies.push({ x: x, y: y, vx: (Math.random() - 0.5) * 120, vy: 0, r: r,
+          rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 4,
+          kind: pick(KINDS), col: colour() });
+        if (bodies.length > MAXN) bodies.shift();
+      }
+
+      function step(dt, w, h) {
+        var i, j, b;
+        for (i = 0; i < bodies.length; i++) {
+          b = bodies[i];
+          if (b === drag) {
+            /* follows the pointer with a little lag, which is what makes a throw feel weighted */
+            b.vx = (ptr.x - b.x) * 22; b.vy = (ptr.y - b.y) * 22;
+            b.x += b.vx * dt; b.y += b.vy * dt;
+            b.rot += b.vr * dt;
+            continue;
+          }
+          b.vy += G * dt;
+          b.x += b.vx * dt; b.y += b.vy * dt;
+          b.rot += b.vr * dt;
+          if (b.x < b.r) { b.x = b.r; b.vx = -b.vx * 0.4; }
+          if (b.x > w - b.r) { b.x = w - b.r; b.vx = -b.vx * 0.4; }
+          if (b.y > h - b.r) {
+            b.y = h - b.r;
+            b.vy = Math.abs(b.vy) < 60 ? 0 : -b.vy * 0.38;
+            b.vx *= Math.exp(-4 * dt);
+            b.vr = b.vx / b.r;
+          }
+          if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.3; }
+        }
+        for (var pass = 0; pass < 3; pass++) {
+          for (i = 0; i < bodies.length; i++) {
+            for (j = i + 1; j < bodies.length; j++) {
+              var A = bodies[i], B = bodies[j];
+              var dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+              var min = (A.r + B.r) * 0.96;
+              if (d >= min) continue;
+              var nx = dx / d, ny = dy / d, over = min - d;
+              var ma = A.r * A.r, mb = B.r * B.r, tot = ma + mb;
+              var fa = A === drag ? 0 : (B === drag ? 1 : mb / tot);
+              var fb = B === drag ? 0 : (A === drag ? 1 : ma / tot);
+              A.x -= nx * over * fa; A.y -= ny * over * fa;
+              B.x += nx * over * fb; B.y += ny * over * fb;
+              var rv = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
+              if (rv < 0) {
+                var imp = -(1 + 0.3) * rv / (1 / ma + 1 / mb);
+                if (A !== drag) { A.vx -= imp * nx / ma; A.vy -= imp * ny / ma; }
+                if (B !== drag) { B.vx += imp * nx / mb; B.vy += imp * ny / mb; }
+              }
+            }
+          }
+        }
+      }
+
+      function local(e) {
+        var r = host.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+      function hit(x, y) {
+        for (var i = bodies.length - 1; i >= 0; i--) {
+          var b = bodies[i], dx = x - b.x, dy = y - b.y;
+          if (dx * dx + dy * dy <= b.r * b.r * 1.1) return b;
+        }
+        return null;
+      }
+      var dim = { w: 0, h: 0 };
+      function down(e) {
+        if (still()) return;
+        var p = local(e); ptr.x = p.x; ptr.y = p.y; ptr.vx = ptr.vy = 0; ptr.t = performance.now();
+        var b = hit(p.x, p.y);
+        if (!b) { spawn(p.x, p.y, dim.w, dim.h); b = bodies[bodies.length - 1]; }
+        drag = b; touched = true;
+        try { host.setPointerCapture(e.pointerId); } catch (x) {}
+        e.preventDefault();
+      }
+      function move(e) {
+        if (!drag) return;
+        var p = local(e), now = performance.now(), dtm = Math.max(1, now - ptr.t) / 1000;
+        ptr.vx = (p.x - ptr.x) / dtm * 0.6 + ptr.vx * 0.4;
+        ptr.vy = (p.y - ptr.y) / dtm * 0.6 + ptr.vy * 0.4;
+        ptr.x = p.x; ptr.y = p.y; ptr.t = now;
+      }
+      function up() {
+        if (!drag) return;
+        var c = function (v) { return Math.max(-1700, Math.min(1700, v)); };
+        drag.vx = c(ptr.vx); drag.vy = c(ptr.vy);
+        drag.vr = drag.vx / drag.r;
+        drag = null;
+      }
+      host.style.touchAction = 'none';
+      host.style.cursor = 'pointer';
+      host.addEventListener('pointerdown', down);
+      host.addEventListener('pointermove', move);
+      host.addEventListener('pointerup', up);
+      host.addEventListener('pointercancel', up);
+      /* a drag on the toy must not be read as a page-turning swipe by the pager */
+      ['touchstart', 'touchmove', 'touchend'].forEach(function (n) {
+        host.addEventListener(n, function (e) { e.stopPropagation(); }, { passive: true });
+      });
+      /* double click clears the floor */
+      host.addEventListener('dblclick', function () { bodies.length = 0; drag = null; });
+
+      var stopScene = scene(host, function (ctx, w, h, t) {
+        dim.w = w; dim.h = h;
+
         var padX = Math.max(26, w * 0.09), padY = Math.max(26, h * 0.13);
         var pw = w - padX * 2, ph = h - padY * 2;
         ctx.clearRect(0, 0, w, h);
@@ -195,7 +354,25 @@
         [[padX, padY + ph], [padX + pw, padY]].forEach(function (p) {
           ctx.beginPath(); ctx.arc(p[0], p[1], 4.2, 0, 6.2832); ctx.fill();
         });
+        /* the toy, drawn over the curves */
+        var dt = lastT ? Math.min(0.033, Math.max(0.001, t - lastT)) : 0.016;
+        lastT = t;
+        step(dt, w, h);
+        for (var gi = 0; gi < bodies.length; gi++) drawBody(ctx, bodies[gi]);
+        if (!touched) {
+          ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
+          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
+          ctx.fillText('tap to drop \u00b7 drag to throw \u00b7 double-tap to clear', w - 14, 20);
+          ctx.globalAlpha = 1; ctx.textAlign = 'left';
+        }
       });
+      return function () {
+        host.removeEventListener('pointerdown', down);
+        host.removeEventListener('pointermove', move);
+        host.removeEventListener('pointerup', up);
+        host.removeEventListener('pointercancel', up);
+        if (stopScene) stopScene();
+      };
     }
   };
 
