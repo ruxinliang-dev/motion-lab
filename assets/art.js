@@ -435,6 +435,31 @@
          strip: where the strip sits against the warm ground it reads darker and cooler, against the cool ground lighter and warmer.
          Tap the strip to see its colour value, which stays the same however the ground moves. */
       var STRIP = '#ff6d00', HOT = [255, 61, 0], COOL = [184, 207, 216];
+      var HOT_T = HOT.slice(), COOL_T = COOL.slice();
+      /* The ground follows the strip's colour: above, the same hue pushed hotter and more saturated; below, a pale, quiet version of the
+         opposite hue. That is the pairing in the classic demonstration: the strip is identical, the two grounds pull it apart. */
+      function toRgb(hex) { var n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+      function rgbToHsl(c) {
+        var r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, sat = 0, dd = mx - mn;
+        if (dd) {
+          sat = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+          h = mx === r ? (g - b) / dd + (g < b ? 6 : 0) : mx === g ? (b - r) / dd + 2 : (r - g) / dd + 4; h *= 60;
+        }
+        return [h, sat, l];
+      }
+      function hslToRgb(h, sat, l) {
+        h = ((h % 360) + 360) % 360 / 360;
+        var q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, p = 2 * l - q;
+        var f = function (t) { t = (t + 1) % 1; return Math.round(255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p)); };
+        return [f(h + 1 / 3), f(h), f(h - 1 / 3)];
+      }
+      function groundFor(hex) {
+        var hsl = rgbToHsl(toRgb(hex)), h = hsl[0], sat = hsl[1], l = hsl[2];
+        var neutral = sat < 0.12;                       /* a grey strip: warm ground above, cool below */
+        var hot = neutral ? hslToRgb(18, 1, 0.5) : hslToRgb(h - 8, 1, Math.max(0.34, Math.min(0.55, l - 0.06)));
+        var cool = neutral ? hslToRgb(200, 0.22, 0.78) : hslToRgb(h + 172, 0.22, 0.78);
+        return [hot, cool];
+      }
       /* a row of swatches and a full colour picker sit over the lower edge of the ground: choose what colour the strip is */
       var PRESETS = ['#ff6d00', '#00b894', '#7a5cff', '#ffd400', '#e91e63', '#2d3436'];
       var bar = document.createElement('div');
@@ -443,6 +468,7 @@
       var chips = [];
       function setStrip(c) {
         STRIP = c.toLowerCase(); S.show = 1;
+        var gg = groundFor(STRIP); HOT_T = gg[0]; COOL_T = gg[1];
         chips.forEach(function (ch) { ch.style.boxShadow = ch.dataset.c === STRIP ? '0 0 0 2px #111' : '0 0 0 1px rgba(0,0,0,.25)'; });
         if (custom) custom.value = STRIP;
       }
@@ -474,7 +500,7 @@
         var r = host.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         return px >= geom.sx - 8 && px <= geom.sx + geom.sw + 8 && py >= geom.sy0 && py <= geom.sy1;
       }
-      setStrip(STRIP); S.show = 0;
+      setStrip(STRIP); S.show = 0; HOT = HOT_T.slice(); COOL = COOL_T.slice();
       function d(e) {
         if (still()) return;
         if (e.target !== host && e.target.tagName !== 'CANVAS') return;
@@ -502,6 +528,7 @@
         /* the boundary eases toward the pointer, and drifts slowly by itself until someone touches it */
         if (!S.on && !S.hover) S.ty = 0.5 + 0.28 * Math.sin(t * 0.6);
         S.y += (S.ty - S.y) * Math.min(1, dt * 9);
+        for (var ci = 0; ci < 3; ci++) { HOT[ci] += (HOT_T[ci] - HOT[ci]) * Math.min(1, dt * 7); COOL[ci] += (COOL_T[ci] - COOL[ci]) * Math.min(1, dt * 7); }
         if (S.show > 0) S.show = Math.max(0, S.show - dt * 0.55);
 
         var m = Math.min(Math.max(14, Math.min(w, h) * 0.11), w * 0.4, h * 0.4);
