@@ -143,7 +143,7 @@
     id: 'motion',
     label: 'Motion',
     span: 'tile--2x2',
-    math: 'f(x) = 1 / (1 + e^-k(x - 0.5)),  k = 5 … 16',
+    math: '',
     mount: function (host) {
       var ks = [5, 7, 9, 12, 16];
 
@@ -164,6 +164,7 @@
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(b.rot);
+        if (b.pop) { var ps = 1 + 0.25 * b.pop; ctx.scale(ps, ps); b.pop = Math.max(0, b.pop - 0.06); }
         ctx.fillStyle = b.col; ctx.strokeStyle = b.col; ctx.lineJoin = 'round';
         var r = b.r;
         if (b.kind === 'circle') {
@@ -207,6 +208,32 @@
         if (bodies.length > MAXN) bodies.shift();
       }
 
+      /* Same colour twice in contact: one bigger shape of a random kind replaces both. Its area is the sum of theirs (so it reads as
+         the two joined), capped so one shape can never fill the tile. */
+      function merge(A, B, i, j, w, h) {
+        var cap = Math.min(w, h) * 0.3;
+        var r = Math.min(cap, Math.sqrt(A.r * A.r + B.r * B.r) * 1.08);
+        var M = { x: (A.x * A.r + B.x * B.r) / (A.r + B.r), y: (A.y * A.r + B.y * B.r) / (A.r + B.r),
+                  vx: (A.vx + B.vx) / 2, vy: (A.vy + B.vy) / 2, r: r, rot: Math.random() * 6.28,
+                  vr: (Math.random() - 0.5) * 3, kind: pick(KINDS), col: A.col, pop: 1 };
+        if (drag === A || drag === B) drag = M;
+        bodies.splice(j, 1); bodies.splice(i, 1); bodies.push(M);
+        return true;
+      }
+
+      /* the tile opens already holding a pile: a dozen shapes are dropped and settled before the first frame is drawn */
+      var seeded = false;
+      function seed(w, h) {
+        seeded = true;
+        var n = 12, base = Math.max(14, Math.min(w, h) * 0.075);
+        for (var q = 0; q < n; q++) {
+          var r = base * (0.8 + Math.random() * 0.7);
+          bodies.push({ x: w * (0.08 + 0.84 * Math.random()), y: -r * (1 + q * 1.6), vx: 0, vy: 0, r: r,
+            rot: Math.random() * 6.28, vr: 0, kind: pick(KINDS), col: colour() });
+        }
+        for (var st = 0; st < 360; st++) step(1 / 60, w, h);
+      }
+
       function step(dt, w, h) {
         var i, j, b;
         for (i = 0; i < bodies.length; i++) {
@@ -238,6 +265,7 @@
               var dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) || 0.001;
               var min = (A.r + B.r) * 0.96;
               if (d >= min) continue;
+              if (A.col === B.col && merge(A, B, i, j, w, h)) { i = -1; j = 0; break; }
               var nx = dx / d, ny = dy / d, over = min - d;
               var ma = A.r * A.r, mb = B.r * B.r, tot = ma + mb;
               var fa = A === drag ? 0 : (B === drag ? 1 : mb / tot);
@@ -305,64 +333,28 @@
 
       var stopScene = scene(host, function (ctx, w, h, t) {
         dim.w = w; dim.h = h;
+        if (!seeded && w > 80 && h > 80) seed(w, h);
 
-        var padX = Math.max(26, w * 0.09), padY = Math.max(26, h * 0.13);
-        var pw = w - padX * 2, ph = h - padY * 2;
         ctx.clearRect(0, 0, w, h);
 
-        /* plot grid */
-        ctx.strokeStyle = 'rgba(0,0,0,.08)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (var i = 0; i <= 12; i++) {
-          var gx = Math.round(padX + pw * i / 12) + 0.5;
-          ctx.moveTo(gx, padY); ctx.lineTo(gx, padY + ph);
-        }
-        for (var j = 0; j <= 8; j++) {
-          var gy = Math.round(padY + ph * j / 8) + 0.5;
-          ctx.moveTo(padX, gy); ctx.lineTo(padX + pw, gy);
-        }
-        ctx.stroke();
-
-        /* the curves, normalised so every k starts at 0 and ends at 1 */
-        ks.forEach(function (k, n) {
-          var lo = 1 / (1 + Math.exp(k * 0.5));
-          var hi = 1 / (1 + Math.exp(-k * 0.5));
-          var f = function (x) { return (1 / (1 + Math.exp(-k * (x - 0.5))) - lo) / (hi - lo); };
-
-          ctx.strokeStyle = blue(0.35 + 0.6 * n / (ks.length - 1));
-          ctx.lineWidth = 2;
-          ctx.lineJoin = 'round';
-          ctx.beginPath();
-          for (var s = 0; s <= 90; s++) {
-            var x = s / 90;
-            var px = padX + x * pw, py = padY + ph - f(x) * ph;
-            if (s) ctx.lineTo(px, py); else ctx.moveTo(px, py);
-          }
-          ctx.stroke();
-
-          /* one dot per curve, all released at the same moment */
-          var tau = ((t / 3.4) + n * 0.045) % 1;
-          ctx.fillStyle = tok('--ink');
-          ctx.beginPath();
-          ctx.arc(padX + tau * pw, padY + ph - f(tau) * ph, 3.4, 0, 6.2832);
-          ctx.fill();
-        });
-
-        /* the two ends of the track */
-        ctx.fillStyle = blue(0.7);
-        [[padX, padY + ph], [padX + pw, padY]].forEach(function (p) {
-          ctx.beginPath(); ctx.arc(p[0], p[1], 4.2, 0, 6.2832); ctx.fill();
-        });
-        /* the toy, drawn over the curves */
+        /* the toy */
         var dt = lastT ? Math.min(0.033, Math.max(0.001, t - lastT)) : 0.016;
         lastT = t;
         step(dt, w, h);
         for (var gi = 0; gi < bodies.length; gi++) drawBody(ctx, bodies[gi]);
         if (!touched) {
-          ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
-          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
-          ctx.fillText('tap to drop \u00b7 drag to throw \u00b7 double-tap to clear', w - 14, 20);
+          /* the call to action: a ring that breathes over the empty top of the tile, and the words under it */
+          var pulse = 0.5 + 0.5 * Math.sin(t * 3);
+          var cx = w * 0.5, cy = h * 0.3;
+          ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5;
+          ctx.globalAlpha = 0.25 + 0.25 * pulse;
+          ctx.beginPath(); ctx.arc(cx, cy, 14 + 8 * pulse, 0, 6.2832); ctx.stroke();
+          ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 6.2832); ctx.fillStyle = tok('--ink'); ctx.fill();
+          ctx.font = '600 12px ' + (tok('--mono') || 'ui-monospace, monospace');
+          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.7; ctx.textAlign = 'center';
+          ctx.fillText('tap anywhere to drop a shape', cx, cy + 40);
+          ctx.globalAlpha = 0.5; ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
+          ctx.fillText('drag to throw \u00b7 same colours merge \u00b7 double-tap to clear', cx, cy + 58);
           ctx.globalAlpha = 1; ctx.textAlign = 'left';
         }
       });

@@ -483,3 +483,31 @@ html.booted .page--intro .wrap > *:nth-child(5){animation-delay:.41s}
 html.booted .page--intro .wrap > *:nth-child(n+6){animation-delay:.5s}
 :root[data-motion="off"] .page--intro .wrap > *{animation:none}
 @media (prefers-reduced-motion:reduce){html.booted .page--intro .wrap > *{animation:none}}
+
+/* ---- the index overlay on small screens -----------------------------------
+   It was centred with justify-content/align-items:center inside a scrolling box. When the content is taller (or wider) than the box,
+   centring pushes the overflow off the top and left, where scrolling can never reach it: the top of every column hid under the nav and
+   the last column was cut off. The box now starts at its top-left and the matrix centres itself with auto margins, which centre when
+   there is room and fall back to the start when there is not, so everything can be scrolled to. */
+.deck__over{
+  justify-content:flex-start;
+  align-items:flex-start;
+  padding-top:clamp(72px,10vh,96px);
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px);
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.deck__over > .deck__matrix{margin-left:auto;margin-right:auto}
+.deck__over > .deck__overfoot,
+.deck__over > .deck__colophon,
+.deck__over > .deck__close{align-self:center}
+/* a tablet-width screen (761-1000px) puts five columns across at 118px each; below 1000 stack them like the phone layout so no column
+   is ever off the edge */
+@media (max-width:1000px){
+  .deck__matrix{flex-direction:column;align-items:stretch;width:100%;gap:14px}
+  .deck__mcol{flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:6px}
+  .deck__mname{width:100%;padding:0 2px}
+  .deck__mcell{width:auto;flex:1 1 140px;min-height:0}
+  .deck__overfoot{display:none}
+}
