@@ -1,0 +1,1859 @@
+/* ---------------------------------------------------------------------------
+   KeePlan .
+
+   Layouts follow the hi-fi screens: the dashboard card row, the
+   Reminder / Meeting / Event switch, Feature Activities, Popular Near You,
+   the Weekly Stats rings with their To do / Done / Left badges, the timeline,
+   the calendar, the thread and Edit Profile.
+
+   What changed is the colour. The survey asked for bright rather than
+   gloomy; this version reads that as a blue to cyan ramp instead of the grey
+   the prototype shipped in.
+
+   The product sits on the black page and carries its own tokens under kp-.
+   Nothing here is an image: every icon is an SVG path drawn in keeplan.js.
+--------------------------------------------------------------------------- */
+
+.kp,.decision-ui{
+  /* The screen is the page's white, not a blue-grey. #f2f7fc came off the boards and read as a tint the whole prototype was sitting in; against a
+     white site it looked like the phone had its own weather. Every card and
+     control on these screens already carries a hairline or a shadow, so
+     nothing disappears when the ground under them goes white.
+
+     Literal, not var(--bg): the rest of this palette is fixed on purpose —
+     it is a product, photographed, and a product does not invert when the
+     site around it goes dark. */
+  --kp-bg:#ffffff;
+  --kp-card:#ffffff;
+  --kp-ink:#0d1b2a;
+  --kp-ink-2:#4a5c6e;
+  --kp-ink-3:#78899b;
+  /* Both stepped one notch darker when the screen went white. A card used to
+     be told apart two ways — a white fill on a blue-grey ground, plus its
+     border — and now only the border does it. At #e2ecf5 that border measured
+     1.20:1 against white, under the site's own hairline (#dedcd8, 1.37:1).
+     These land at 1.38 and 1.20, so the edge is worth the same here as
+     everywhere else on the site. */
+  --kp-line:#cfddec;
+  --kp-line-2:#e2ecf5;
+
+  --kp-brand:#0b5fd0;        /* fills that carry white text, 5.2:1        */
+  --kp-brand-dark:#073d8c;
+  --kp-brand-soft:#dbe9fb;
+  --kp-brand-tint:#eef5fd;
+  --kp-cyan:#00b6d4;
+  /* the logo's own two colours, sampled off her recording */
+  --kp-purple:#652f9a;
+  --kp-pin:#0060f0;
+  --kp-cyan-soft:#d3f1f7;
+  /* --- one radius scale -------------------------------------------------
+     Seven different roundings were in use between 8 and 16px — 8, 10, 11,
+     12, 13, 14, 16 — and not one of them was derived from anything. They
+     were each typed at the moment that element was written. Three steps
+     cover every box in here, and a number you can name is a number that
+     stops drifting.
+
+     Two values stay outside the scale on purpose: the calendar tile keeps 9,
+     which was worked out from her reference (64px cell at 14 -> 33px cell at
+     9), and the message bubble keeps 14 with 4 on the tail corner, which she
+     approved shape-by-shape. */
+  /* --- one type scale ---------------------------------------------------
+     Nineteen sizes were in use between 8 and 28px — twelve of them packed
+     into the 5.5px between 8 and 13.5, which is half-pixel granularity that
+     nobody reads as a system, only as drift.
+
+     The five that nobody ever chose are folded into their nearest neighbour:
+     8 -> 8.5, 9 -> 9.5, 10 -> 10.5, 11.5 -> 12, 13.5 -> 13. The ones she
+     picked by eye and asked for out loud all stay exactly where they are
+     (12 on the calendar dates, 10.5 on its weekday row, 11 on the timeline
+     rows, 13 on a section head, 19 on a screen title) — unifying is not a
+     licence to undo her tuning. */
+  --kp-fs-1:8.5px;   /* timestamps, tab labels, the smallest meta */
+  --kp-fs-2:9.5px;   /* keys, captions under a figure             */
+  --kp-fs-3:10.5px;  /* labels, switches, small UI text           */
+  --kp-fs-4:11px;    /* body: rows, messages, most text           */
+  --kp-fs-5:12px;    /* emphasis: buttons, calendar dates         */
+  --kp-fs-6:12.5px;  /* the bigger body: titles inside a row      */
+  --kp-fs-7:13px;    /* a section head                            */
+  --kp-fs-8:19px;    /* the screen title                          */
+
+  /* --- one border scale -------------------------------------------------
+     1 is a hairline, 1.5 is a field's edge, 2.2 is an edge carrying a value
+     (the selected pill, the ring round a day that has something on it).
+     1.6 and 1.8 were one-offs with nothing behind them. */
+  --kp-bw-1:1px;
+  --kp-bw-2:1.5px;
+  --kp-bw-3:2.2px;
+
+  --kp-r-s:11px;    /* icon tiles, chips, day cells, badges   */
+  --kp-r-m:13px;    /* rows, buttons, notes, the toast        */
+  --kp-r-l:16px;    /* cards, search, dashboard cards         */
+  --kp-grad:linear-gradient(152deg,#0b5fd0 0%,#1487d8 46%,#00b6d4 100%);
+
+  --kp-font:"Google Sans Text","Google Sans",-apple-system,BlinkMacSystemFont,
+            "Segoe UI Variable Text","Segoe UI",Roboto,system-ui,sans-serif;
+}
+
+/* --- section layout: the flow on the left, the phone on the right --------- */
+.kp{display:grid;gap:clamp(18px,2.4vw,34px);grid-template-columns:minmax(0,1fr) auto;
+    align-items:start}
+@media (max-width:860px){
+  .kp{grid-template-columns:1fr;justify-items:center}
+}
+
+/* --- the flow rail -------------------------------------------------------- */
+.flow{width:100%;min-width:0}
+.flow__head{
+  display:flex;align-items:baseline;gap:12px;margin-bottom:14px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.flow__list{display:flex;flex-direction:column;gap:2px;list-style:none;margin:0;padding:0}
+.flow__step{
+  display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start;
+  width:100%;text-align:left;padding:9px 12px;border-radius:var(--r-s);
+  color:var(--ink-3);
+  transition:background var(--d-1) var(--e-standard), color var(--d-1) var(--e-standard);
+}
+.flow__step:hover{background:var(--surface);color:var(--ink-2)}
+.flow__step[aria-current="step"]{background:var(--surface-2);color:var(--ink)}
+.flow__n{
+  font-family:var(--mono);font-size:10.5px;line-height:20px;text-align:center;
+  height:20px;border-radius:999px;background:var(--surface-2);color:var(--ink-3);
+  transition:background var(--d-2) var(--e-standard), color var(--d-2) var(--e-standard);
+}
+.flow__step[aria-current="step"] .flow__n{background:var(--kp-cyan);color:#04222b}
+.flow__step.is-done .flow__n{background:var(--kp-brand);color:#fff}
+.flow__t{font-size:14px;letter-spacing:-.015em}
+.flow__d{font-size:12.5px;color:var(--ink-3);line-height:1.42;margin-top:3px;display:none}
+.flow__step[aria-current="step"] .flow__d{display:block;color:var(--ink-2)}
+
+.flow__bar{display:flex;gap:8px;margin-top:20px;align-items:center;flex-wrap:wrap}
+.flow__btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;padding:8px 14px;border-radius:999px;
+  border:1px solid var(--line);color:var(--ink);
+  transition:background var(--d-1) var(--e-standard), opacity var(--d-1) linear;
+}
+.flow__btn:hover{background:var(--tint)}
+.flow__btn[disabled]{opacity:.35;pointer-events:none}
+/* The project blue, not the cyan (she: "next 换成项目蓝色"). Cyan is the LOW
+   end of this project's ramp — it means "least" everywhere else on the page,
+   which is the wrong thing for the one button that moves you forward. Brand
+   is the far end, and it takes white at 5.2:1 where the cyan needed near-black. */
+.flow__btn--go{background:var(--kp-brand);color:#fff;border-color:transparent}
+.flow__btn--go:hover{background:var(--kp-brand-dark)}
+.flow__btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;
+               stroke-linecap:round;stroke-linejoin:round}
+.flow__keys{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-left:auto}
+
+@media (max-width:860px){
+  .flow__list{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:8px;
+              scrollbar-width:none}
+  .flow__list::-webkit-scrollbar{display:none}
+  .flow__step{grid-template-columns:auto auto;white-space:nowrap;
+              background:var(--surface);flex:none}
+  .flow__d{display:none !important}
+}
+
+
+/* --- Step 2 ---------------------------------------------------------------
+   One line and one drawing, and a lot of air. The air is the content: every
+   other screen in this flow is asking for something. */
+/* the box is the lamp's own now, so it can be smaller and still read bigger */
+
+/* --- the message list ---------------------------------------------------- */
+.kp-search{
+  display:flex;align-items:center;gap:9px;margin-top:13px;
+  padding:10px 13px;border-radius:var(--kp-r-l);
+  border:1.5px solid var(--kp-brand);background:var(--kp-card);
+  color:var(--kp-ink-3);
+}
+.kp-search input{
+  flex:1;border:0;outline:0;background:none;font:inherit;font-size:12.5px;
+  color:var(--kp-ink);min-width:0;
+}
+.kp-search .kp-ico{order:2;color:var(--kp-ink-2)}
+.kp-people{margin-top:6px}
+/* Three columns, not four. The timestamp used to hold a column of its own,
+   which took the right-hand end of every row away from the message — so the
+   preview had about six words before it ellipsed. It now sits on its own line
+   inside the text block, right-aligned above the name, and the message gets
+   the full width and two lines of it.
+
+   Every row is the same height and they sit closer together (she: "layout
+   不整齐 / 每个对话框之间距离太远"). The raggedness was the previews: a
+   one-line message made a short row and a two-line one made a tall row, so
+   the rules between them landed at uneven intervals down the list. The
+   preview box is now two lines whether or not it needs them — a list of
+   people is a table, and a table's rows are the same height. With that fixed,
+   the padding could come down from 11 to 7. */
+.kp-person{
+  width:100%;display:grid;grid-template-columns:8px 38px 1fr;
+  align-items:center;gap:10px;text-align:left;
+  padding:7px 2px;border:0;background:none;
+  border-bottom:1px solid var(--kp-line-2);
+}
+.kp-person__dot{
+  width:7px;height:7px;border-radius:999px;background:var(--kp-brand-soft);
+}
+.kp-person.is-new .kp-person__dot{background:var(--kp-cyan)}
+.kp-person__av{
+  width:38px;height:38px;border-radius:var(--kp-r-s);display:grid;place-items:center;
+  font-size:14px;font-weight:700;color:var(--kp-brand-dark);
+}
+.kp-person__t{min-width:0;display:block}
+.kp-person__t b{display:block;font-size:13px;color:var(--kp-ink);font-weight:700}
+.kp-person__t small{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  font-size:var(--kp-fs-5);color:var(--kp-ink-2);margin-top:2px;
+  overflow:hidden;line-height:1.35;
+  height:31px;                      /* exactly two lines of 15.5 */
+}
+.kp-person__w{
+  display:block;text-align:right;font-size:var(--kp-fs-3);color:var(--kp-ink-3);
+  margin-bottom:1px;
+}
+
+/* the menu mark in the top bar is a control now, so it gets a control's
+   target and the same quiet press every other icon button here has */
+.kp-topbtn{
+  border:0;background:none;padding:0;color:var(--kp-ink-2);
+  display:grid;place-items:center;
+  transition:color var(--d-2) var(--e-standard), transform var(--d-1) var(--e-standard);
+}
+.kp-topbtn:hover{color:var(--kp-brand)}
+.kp-topbtn:active{transform:scale(.92)}
+
+/* --- settings ------------------------------------------------------------- */
+.kp-set{margin-top:30px;display:flex;flex-direction:column;gap:6px}
+.kp-set__row{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 6px;border:0;background:none;text-align:left;
+  font-size:var(--kp-fs-7);color:var(--kp-ink);
+  border-radius:var(--kp-r-m);
+  transition:background var(--d-2) var(--e-standard);
+}
+.kp-set__row:hover{background:var(--kp-brand-tint)}
+.kp-set__row .kp-ico{width:19px;height:19px}
+
+
+/* --- the device ----------------------------------------------------------- */
+.kp-phone{
+  position:relative;flex:none;
+  width:min(324px,80vw);aspect-ratio:9/19.3;
+  background:var(--kp-bg);
+  border-radius:38px;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 0 0 8px #101012, 0 30px 70px rgba(0,0,0,.65);
+  overflow:hidden;
+  font-family:var(--kp-font);
+  color:var(--kp-ink);
+  letter-spacing:-.005em;
+  display:flex;flex-direction:column;
+  contain:paint;
+}
+.kp-phone__notch{
+  position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:9;
+  width:88px;height:22px;border-radius:999px;background:#101012;
+}
+/* --- everything starts higher -------------------------------------------
+   The status band was 44px with the clock pinned to its bottom edge, then the
+   bar under it added 4px of margin, and the sheets added 16px of padding on
+   top of that — three separate reasons for the same gap, stacked (she: "所有
+   页面往上提，现在太靠下了，包括进入 message 后").
+
+   The band is 40 now, the margin is gone and the sheets take the same 2px
+   every other screen takes, so the first row of every screen starts at the
+   same height: 43px down, 12px under the island. The clock still sits beside
+   the island rather than under it, which is where a phone puts it. */
+.kp-status{
+  flex:none;height:40px;display:flex;align-items:flex-end;
+  justify-content:space-between;padding:0 20px 5px;
+  font-size:11px;font-weight:500;color:var(--kp-ink);position:relative;z-index:2;
+  transition:color var(--d-3) var(--e-standard);
+}
+.kp-status__dots{display:flex;gap:3px;align-items:center}
+.kp-status__dots i{width:4px;height:4px;border-radius:999px;background:currentColor;
+                   display:block;opacity:.75}
+.kp-status__dots i:last-child{width:15px;height:8px;border-radius:2.5px;opacity:.35}
+/* The full-bleed screen paints the WHOLE device, status bar included.
+
+   It used to be flat #0b5fd0 up here and the gradient started at the top of
+   the screen 45px lower — and a 152deg gradient has already travelled by the
+   time it reaches its own right edge, so the two blues matched on the left and
+   parted on the right. That was the seam across the top: not a border, just
+   two different blues meeting. */
+.kp-phone.is-dark{background:var(--kp-grad)}
+.kp-phone.is-dark .kp-status{color:#fff}
+
+/* --- more below ----------------------------------------------------------
+   A soft edge that only exists while there is something under it. On the
+   phone, not on the screen: a pseudo-element inside a scroll container
+   scrolls off with the content, which is precisely when it is needed. */
+.kp-phone::before,
+.kp-phone::after{
+  content:"";position:absolute;left:0;right:0;height:34px;
+  pointer-events:none;z-index:4;opacity:0;
+  transition:opacity var(--d-2) var(--e-standard);
+}
+.kp-phone::before{
+  top:0;
+  background:linear-gradient(to bottom, var(--kp-bg) 22%, rgba(255,255,255,0));
+}
+.kp-phone::after{
+  bottom:0;
+  background:linear-gradient(to top, var(--kp-bg) 22%, rgba(255,255,255,0));
+}
+.kp-phone[data-more~="u"]::before{opacity:.92}
+.kp-phone[data-more~="d"]::after{opacity:.92}
+/* the full-bleed blue screen paints its own ground, so the white fade would
+   be a smear across it */
+.kp-phone.is-dark::before,
+.kp-phone.is-dark::after{display:none}
+
+.kp-view{position:relative;flex:1;min-height:0;overflow:hidden}
+/* A base size, so nothing can quietly land on the page's 16px. Every element
+   with text in it already declares its own, so this changes nothing today —
+   it is here so the next thing that forgets to declare one lands on the
+   device's body size instead of a size from outside the device. */
+.kp-screen{
+  font-size:var(--kp-fs-4);
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  padding:2px 18px 16px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.kp-screen::-webkit-scrollbar{display:none}
+.kp-screen--flush{padding:0}
+
+/* --- shared product parts -------------------------------------------------- */
+/* 19, not 22. The screen title sits in a bar 243px wide with a search and a
+   kebab beside it, and at 22 a word like "Reminder" was taking a third of the
+   phone before anything had been said. */
+.kp-h1{font-size:19px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
+/* 13, not 14.5. "Your Dashboard" and "My Tasks" are signposts between
+   sections, not headlines — at 14.5 they were reading as close to the screen
+   title as makes no difference, which flattened the page's hierarchy. */
+.kp-h2{font-size:13px;font-weight:600;letter-spacing:-.02em;display:block}
+.kp-lab{font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+        color:var(--kp-ink-3)}
+.kp-sub{font-size:12.5px;color:var(--kp-ink-2);line-height:1.5}
+/* The icons are drawn in the mark's gradient, not in one flat ink — the same
+   blue-to-cyan the KeePlan logo is drawn with, so the mark and the screens
+   under it are one drawing. The paint server lives in a hidden svg keeplan.js
+   puts on the page once. */
+.kp-ico{width:18px;height:18px;flex:none;fill:none;stroke:url(#kpIcoGrad);
+        stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+/* The pen is in SCREEN pixels now, not viewBox units. Two things made that
+   necessary: the runtime fitting scales each icon's group, which would have
+   scaled its stroke with it, and the old way meant every icon size needed its
+   own compensated number to end up at the same weight. One number, one pen,
+   whatever the icon is drawn at. */
+.kp-ico *{vector-effect:non-scaling-stroke}
+/* Three discs the width of the pen read lighter than a drawn shape does at
+   the same weight — there is simply less of them on the page. So the kebab is
+   given its own, heavier, and it is the only icon in the set that needs the
+   exception. */
+.kp-ico--dots{stroke-width:3.4}
+/* ...except where the icon is standing on a filled ground and is the only
+   thing holding contrast there. A blue gradient on a blue button is nothing. */
+.kp-btn .kp-ico,
+.kp-dash__c.on .kp-ico,
+.kp-tl__i.on .kp-ico,
+.kp-tab--add .kp-ico,
+.kp-note .kp-ico,
+.kp-send .kp-ico,
+.kp-toast .kp-ico,
+.kp-ev__act button[aria-pressed="true"] .kp-ico{stroke:currentColor}
+.kp-ico--sm{width:15px;height:15px}
+/* A shade heavier because it is bigger — but only a shade, and now it is a
+   real pixel value rather than a number that had to be back-calculated from
+   the box it is drawn in. */
+.kp-ico--lg{width:22px;height:22px;stroke-width:2.2}
+
+.kp-card{
+  background:var(--kp-card);border-radius:var(--kp-r-l);padding:12px 13px;
+  border:1px solid var(--kp-line);
+}
+.kp-btn{
+  width:100%;height:46px;border-radius:var(--kp-r-m);
+  background:var(--kp-brand);color:#fff;
+  font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform var(--d-2) var(--e-out), background var(--d-2) var(--e-standard);
+}
+.kp-btn:active{transform:scale(.975)}
+/* Solid blue at rest — it is the only thing to press on this screen, and a
+   pale button asking to be noticed is a contradiction.
+
+   No shadow, and nothing that lifts. It deepens under the pointer and gives
+   under the press: two states, both of them the button's own colour and its
+   own size. A shadow would be a third material arriving to explain a button
+   that is already perfectly clear. */
+.kp-btn--ghost{
+  background:var(--kp-brand);color:#fff;
+  transition:background var(--d-2) var(--e-standard),
+             transform var(--d-1) var(--e-out);
+}
+.kp-btn--ghost:hover{background:var(--kp-brand-dark)}
+.kp-btn--ghost:active{transform:scale(.975)}
+:root[data-motion="off"] .kp-btn--ghost{transition:none}
+.kp-btn--grad{background:var(--kp-grad)}
+
+/* A fixed height, because the bar's contents differ per screen and the back
+   arrow is supposed to be in one place. Messages puts a word and a plus in
+   here (30px tall); the thread puts a 32px avatar with two lines of type
+   beside it. Centred in a bar that sizes to its contents, the same arrow
+   landed several pixels lower on one screen than the other. */
+.kp-top{display:flex;align-items:center;justify-content:space-between;
+        min-height:40px}
+/* every screen with its own back arrow starts at the same height — the class
+   is added in go(), so a new sheet cannot forget to ask for it */
+.kp-screen--sheet{padding-top:2px}
+.kp-top__acts{display:flex;gap:12px;color:var(--kp-ink-2)}
+/* Solid brand, not the icon gradient (she: "这两个做 solid 蓝色" — search and
+   the kebab, in the top bar). The gradient stroke is for icons that carry a
+   value or sit inside the device's main content; these two are chrome, and
+   chrome reads as chrome faster in one flat colour than in the product's
+   data gradient. */
+.kp-top__acts .kp-ico{stroke:var(--kp-brand)}
+
+/* month strip and day strip, straight off the home screen */
+.kp-months{display:flex;justify-content:space-between;margin-top:12px;
+           font-size:11px;color:var(--kp-ink-3)}
+.kp-months b{color:var(--kp-ink);font-weight:500;position:relative}
+.kp-months b::after{
+  content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);
+  width:13px;height:1.5px;background:var(--kp-brand);border-radius:2px;
+}
+.kp-days{display:flex;gap:5px;margin-top:14px}
+.kp-day{
+  flex:1;height:36px;border-radius:var(--kp-r-s);display:grid;place-items:center;
+  font-size:12.5px;color:var(--kp-ink-2);background:var(--kp-card);
+  border:1px solid var(--kp-line);
+  transition:background var(--d-2) var(--e-standard), color var(--d-2) var(--e-standard);
+}
+.kp-day[aria-pressed="true"]{background:var(--kp-brand);color:#fff;border-color:transparent}
+
+/* Reminder / Meeting / Event */
+.kp-seg{
+  display:flex;gap:4px;margin-top:10px;padding:3px;border-radius:999px;
+  background:var(--kp-brand-tint);position:relative;
+}
+.kp-seg button{
+  flex:1;padding:7px 4px;border-radius:999px;font-size:11px;
+  color:var(--kp-ink-3);position:relative;z-index:1;
+  transition:color var(--d-2) var(--e-standard);
+}
+.kp-seg button[aria-selected="true"]{color:var(--kp-brand-dark);font-weight:500}
+.kp-seg__pill{
+  position:absolute;top:3px;bottom:3px;left:3px;z-index:0;
+  width:calc((100% - 6px) / var(--n,3));
+  background:var(--kp-card);border-radius:999px;
+  box-shadow:0 1px 3px rgba(13,27,42,.12);
+}
+
+/* --- dashboard card row (Tara Gentile / Project B / Art Com) -------------- */
+.kp-dash{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}
+.kp-dash__c{
+  background:var(--kp-card);border:1px solid var(--kp-line);border-radius:var(--kp-r-l);
+  padding:11px 7px 9px;display:grid;justify-items:center;gap:4px;text-align:center;
+}
+.kp-dash__c b{font-size:9.5px;font-weight:700;line-height:1.25;display:block}
+.kp-dash__c small{font-size:var(--kp-fs-1);color:var(--kp-ink-3);line-height:1.3;display:block}
+.kp-dash__c hr{width:14px;border:0;border-top:1px solid var(--kp-line);margin:3px 0}
+.kp-dash__c em{font-style:normal;font-size:var(--kp-fs-1);font-weight:700;color:var(--kp-ink-2);
+               display:block}
+.kp-dash__c .kp-ico{width:13px;height:13px;color:var(--kp-ink-3)}
+.kp-dash__c.on{background:var(--kp-grad);border-color:transparent;color:#fff}
+.kp-dash__c.on small,.kp-dash__c.on em{color:rgba(255,255,255,.86)}
+.kp-dash__c.on hr{border-top-color:rgba(255,255,255,.4)}
+.kp-dash__c.on .kp-ico{color:#fff}
+
+/* --- task rows ------------------------------------------------------------ */
+/* 13, not 18 (she: "我指这个间距", pointing at the air between a block of
+   cards and the heading of the next section). It was the largest gap on the
+   screen by five pixels — larger than the one under the screen title — so the
+   list of tasks read as a second page rather than the next thing down.
+
+   13 is also what the dashboard heading takes, so both section heads now open
+   on the same gap: one number for "a new section starts here". */
+.kp-rowhead{display:flex;justify-content:space-between;align-items:baseline;margin-top:13px}
+.kp-switch{display:flex;gap:10px;font-size:10.5px;color:var(--kp-ink-3)}
+.kp-switch button{color:inherit;font-size:inherit}
+/* Selected used to just go to --kp-ink — heavier, but the same colour as
+   every other label on the screen, so "this one is chosen" read as "this one
+   is bold" (she: "这个选中稍微变色"). Brand blue says which state without
+   relying on weight alone to carry it. */
+.kp-switch button[aria-selected="true"]{color:var(--kp-brand);font-weight:700}
+.kp-task{display:flex;align-items:center;gap:11px;margin-top:8px}
+.kp-task__ico{
+  width:36px;height:36px;border-radius:var(--kp-r-s);flex:none;display:grid;place-items:center;
+  background:var(--kp-brand-tint);color:var(--kp-brand);
+}
+.kp-task__b{flex:1;min-width:0}
+.kp-task__k{font-size:var(--kp-fs-2);letter-spacing:.11em;text-transform:uppercase;
+            color:var(--kp-brand);font-weight:700;display:block}
+.kp-task__t{font-size:12.5px;font-weight:600;margin-top:2px;display:block;
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kp-task__d{font-size:var(--kp-fs-3);color:var(--kp-ink-3);margin-top:2px;display:block}
+.kp-ring{transform:rotate(-90deg)}
+/* no stroke-width here any more: ring() writes it, as a share of the ring's
+   own diameter. A number in this rule would beat the one on the element. */
+.kp-ring circle{fill:none;stroke-linecap:round}
+.kp-ring .bg{stroke:var(--kp-line)}
+/* the fill's colour is written on the element by ring(): it is the value.
+   This stays as the fallback for anything that draws a ring without one. */
+.kp-ring .fg{stroke:var(--kp-brand)}
+.kp-ring__wrap{position:relative;flex:none}
+.kp-ring__n{position:absolute;inset:0;display:grid;place-items:center;
+            font-weight:700;color:var(--kp-ink-2)}
+
+/* --- welcome and onboarding ---------------------------------------------- */
+/* Her frame puts the mark at 34% down and the button near the floor, with the
+   wordmark tight under the drawing and the copy set apart from both. So: the
+   block is centred, the gaps are not equal, and the button is pushed to the
+   bottom rather than being the last thing in a stack. */
+/* Set to the frame she chose, with every number read off it rather than
+   judged. In that shot the phone is 628x1310 and the pieces land at:
+
+     mark      28.2% down, 290x275, which is 46.2% of the phone's width
+     wordmark  50.9% down, cap height 44px
+     copy      59.8% down, four lines at a 34px pitch
+     button    88.2% down, 536x86 — 85.4% of the width
+
+   Converted into this phone (294.5x631.6, with the screen starting 7.1% down
+   and 585.6 tall), that is the grid below. The two empty rows carry 1.17 : 1,
+   which is the ratio between the air above the drawing and the air under the
+   paragraph — not equal, which is why this cannot be flex auto margins. */
+.kp-welcome{
+  height:100%;display:grid;
+  grid-template-rows:1.36fr auto auto auto 1fr auto;
+  /* 16 for the screen's own bottom padding stacking with this one, plus the
+     42px the button used to occupy as a grid row — it is absolute now, so the
+     flexible rows have to be told to leave its seat empty. */
+  justify-items:center;text-align:center;padding:0 3px 74px;
+}
+.kp-welcome .kp-mark{grid-row:2}
+.kp-welcome .kp-word{grid-row:3;margin-top:14px}
+.kp-welcome p{grid-row:4;margin-top:27px}
+
+/* Sized off her frame rather than guessed. In a 616px-wide shot the mark's
+   ink box is 289px across and the wordmark's cap height is 56px; scaled to
+   this 324px screen that is a 152px mark and a 41px wordmark. Both were about
+   two thirds of that, which is why the screen read as a small logo floating in
+   a lot of paper instead of a title page. */
+/* the traced box is 290x274; 46.2% of the phone's width is 136px */
+.kp-mark{width:136px;height:129px}
+/* Her wordmark, identified rather than guessed: the word was cropped out of
+   the artwork she sent, thresholded, and compared shape-for-shape against
+   fifteen candidate faces at two weights each. Montserrat 800 at -.02em came
+   first at IoU .854 — and it is the geometric family her drawing belongs to,
+   which is what broke the tie with Inter Tight 800 at .853.
+
+   Loaded on its own, one weight, for one word. */
+.kp-word{
+  font-family:"Montserrat", var(--kp-font);
+  /* 28, not 30: Montserrat is wider than the face she used, so matching her
+     cap height would have made the word 43% of the phone against her 38%.
+     28 splits it — the word reads the same size and stops short of crowding
+     the screen it sits on. */
+  font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1;
+}
+/* both halves are blue in the frame she chose, the second one lighter */
+.kp-word span:first-child{color:#0267ff}
+.kp-word span:last-child{color:#0198ff}
+/* her copy sets four lines, and its widest is 73.9% of the phone: 218px here.
+   At 29ch it broke to five and pushed everything under it down a line. */
+.kp-welcome p{font-size:12px;color:var(--kp-ink);line-height:1.36;max-width:218px}
+
+.kp-steplab{display:flex;align-items:flex-start;gap:12px;margin-top:16px}
+.kp-steplab b{font-size:19px;font-weight:700;letter-spacing:-.02em;flex:none}
+.kp-steplab span{font-size:12px;line-height:1.4;color:var(--kp-ink-2);padding-top:3px}
+.kp-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:24px}
+.kp-check{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--kp-ink-2)}
+.kp-check i{
+  width:15px;height:15px;flex:none;border-radius:3px;
+  border:var(--kp-bw-2) solid var(--kp-ink-3);display:block;position:relative;
+  transition:background var(--d-2) var(--e-standard),
+             border-color var(--d-2) var(--e-standard);
+}
+.kp-check[aria-pressed="true"]{color:var(--kp-ink)}
+.kp-check[aria-pressed="true"] i{background:var(--kp-brand);border-color:var(--kp-brand)}
+.kp-check[aria-pressed="true"] i::after{
+  content:"";position:absolute;left:4.5px;top:1px;width:4px;height:8px;
+  border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(42deg);
+}
+.kp-type{margin-top:26px}
+.kp-type label{font-size:12.5px;color:var(--kp-ink-2)}
+.kp-type input{
+  width:100%;margin-top:8px;padding:8px 0;border:0;border-bottom:1.8px solid var(--kp-ink);
+  background:transparent;font-size:13px;font-family:inherit;color:var(--kp-ink);
+}
+.kp-type input:focus{outline:0;border-bottom-color:var(--kp-brand)}
+
+/* --- sign in ---------------------------------------------------------------
+   A mockup, so the code row is six dots rather than a real field. Nothing on
+   this screen collects anything. */
+/* The screen reaches up over the status bar (44px of .kp-status plus the 1px
+   the notch sits on), so its gradient is drawn in the same box as the one the
+   device paints and the two cannot disagree anywhere.
+
+   It keeps a background of its own rather than borrowing the device's,
+   because on the way out it is the SCREEN that animates: with nothing painted
+   on it, leaving Sign In flashed the white phone through it for one frame. */
+.kp-signin{
+  position:absolute;left:0;right:0;bottom:0;top:-45px;
+  background:var(--kp-grad);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:45px 26px 30px;text-align:center;
+}
+.kp-signin h2{font-size:27px;font-weight:700;letter-spacing:-.025em}
+.kp-signin__av{
+  width:74px;height:74px;border-radius:999px;background:#fff;color:var(--kp-brand);
+  display:grid;place-items:center;margin-top:6px;
+}
+/* a touch heavier at this size: her reference is a chunky drawing, and a
+   1.7px stroke blown up to 36px reads as a hairline sketch of one */
+/* Twice the size of a normal icon, so it carries a heavier pen — 2.8 real
+   pixels, chosen to look like the same hand rather than computed to cancel a
+   scale factor, which is what this used to be. */
+.kp-signin__av .kp-ico{width:36px;height:36px;stroke-width:2.8}
+.kp-signin__code{display:flex;gap:10px;margin-top:12px}
+.kp-signin__code i{width:8px;height:8px;border-radius:999px;display:block;
+                   background:rgba(255,255,255,.85)}
+.kp-signin__code i.off{background:rgba(255,255,255,.32)}
+.kp-signin__rule{width:74%;height:1px;background:rgba(255,255,255,.45)}
+.kp-signin__btn{
+  width:100%;height:44px;border-radius:var(--kp-r-m);background:#fff;color:var(--kp-brand-dark);
+  font-size:var(--kp-fs-5);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  margin-top:8px;
+}
+.kp-signin__links{display:flex;justify-content:space-between;width:100%;
+                  font-size:10.5px;color:rgba(255,255,255,.88);margin-top:10px}
+.kp-signin__note{font-size:9.5px;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.5}
+
+/* --- new task ------------------------------------------------------------- */
+.kp-field{margin-top:14px}
+.kp-field label{display:block;font-size:var(--kp-fs-3);color:var(--kp-ink-3);
+                letter-spacing:.06em;text-transform:uppercase}
+.kp-field input,.kp-field textarea{
+  width:100%;margin-top:5px;padding:7px 0;border:0;border-bottom:1px solid var(--kp-line);
+  background:transparent;font-size:12.5px;font-family:inherit;color:var(--kp-ink);
+  border-radius:0;resize:none;line-height:1.5;
+  transition:border-color var(--d-2) var(--e-standard);
+}
+.kp-field input:focus,.kp-field textarea:focus{outline:0;border-bottom-color:var(--kp-brand)}
+.kp-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.kp-cathead{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px}
+.kp-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.kp-cat{
+  padding:8px 4px;border-radius:var(--kp-r-s);font-size:10.5px;text-align:center;
+  border:1px solid var(--kp-line);background:var(--kp-card);color:var(--kp-ink-2);
+  transition:background var(--d-2) var(--e-standard),
+             border-color var(--d-2) var(--e-standard), color var(--d-2) var(--e-standard);
+}
+.kp-cat[aria-pressed="true"]{background:var(--kp-brand);border-color:transparent;color:#fff}
+
+/* --- events --------------------------------------------------------------- */
+.kp-feat{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
+.kp-feat button{
+  border-radius:var(--kp-r-m);padding:11px 6px;background:var(--kp-card);
+  border:1px solid var(--kp-line);display:grid;justify-items:center;gap:5px;
+  transition:border-color var(--d-2) var(--e-standard),
+             background var(--d-2) var(--e-standard);
+}
+.kp-feat button[aria-pressed="true"]{background:var(--kp-cyan-soft);
+                                     border-color:var(--kp-cyan)}
+.kp-feat span{font-size:var(--kp-fs-3);font-weight:700}
+.kp-feat small{font-size:var(--kp-fs-1);color:var(--kp-ink-3);letter-spacing:.04em;
+               text-transform:uppercase;line-height:1.3;text-align:center}
+.kp-ev{margin-top:10px}
+.kp-ev__top{display:flex;gap:9px;align-items:flex-start}
+/* Inverted: the badge is the solid one and the icon is cut out of it. A tinted
+   square with a blue icon is the same weight as the card it sits on; filled,
+   it is the first thing your eye lands on, which is what a card's subject
+   should be. The icon has to be told to go white — every icon in the product
+   draws itself in the blue gradient, and a blue gradient on a blue ground is
+   nothing. */
+.kp-ev__ico{width:32px;height:32px;border-radius:var(--kp-r-s);flex:none;display:grid;
+            place-items:center;background:var(--kp-brand);color:#fff}
+.kp-ev__ico .kp-ico{stroke:#fff}
+
+/* The head-count was flush against the card's edge. It gets room, and it
+   takes the colour of its own ring rather than sitting there in grey — the
+   number and the arc around it are the same fact. */
+.kp-ev__top > .kp-ring__wrap{margin-left:4px;margin-right:3px}
+/* This said :last-child, and the ring is appended AFTER the text — so the
+   rule written to let the text take the remaining width was landing on the
+   ring instead: flex:1 with min-width:0 let it shrink to nothing, its 30px
+   svg overflowed, and the card clipped it into a half disc. That is what she
+   saw; the colour was working the whole time.
+
+   The text block is the one with no class of its own. */
+.kp-ev__top > span:not([class]){flex:1;min-width:0}
+.kp-ev__top > .kp-ring__wrap{flex:none}
+.kp-ev__t{font-size:var(--kp-fs-5);font-weight:700;display:block}
+.kp-ev__x{font-size:var(--kp-fs-3);color:var(--kp-ink-2);line-height:1.45;margin-top:3px;display:block}
+.kp-ev__m{font-size:8.5px;color:var(--kp-ink-3);margin-top:5px;display:block}
+.kp-ev__n{font-weight:700}
+.kp-ev__act{
+  display:flex;gap:16px;align-items:center;margin-top:10px;padding-top:9px;
+  border-top:1px solid var(--kp-line-2);color:var(--kp-ink-3);
+}
+.kp-ev__act button{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;
+                   color:inherit;transition:color var(--d-1) var(--e-standard)}
+.kp-ev__act button:hover{color:var(--kp-ink-2)}
+.kp-ev__act button[aria-pressed="true"]{color:var(--kp-brand)}
+.kp-ev__act button[aria-pressed="true"] .kp-ico{fill:currentColor}
+.kp-ev__join{margin-left:auto;padding:5px 12px;border-radius:999px;
+             background:var(--kp-brand-soft);color:var(--kp-brand-dark);font-size:10.5px}
+/* Scoped past .kp-ev__act button[aria-pressed], which is more specific than a
+   bare .kp-ev__join and was painting the label blue on blue. */
+.kp-ev__act .kp-ev__join[aria-pressed="true"]{background:var(--kp-brand);color:#fff}
+
+/* --- reminder timeline ---------------------------------------------------- */
+/* --- the day's list, on the calendar --------------------------------------
+   Pills, not cards: fully round, a bead outside on the left, and the row you
+   are on carries a heavy edge and its own colour in the type while the rest
+   go quiet. The bead takes --dot, written per row from ringColour() — the
+   same lerp as the ring around that day in the grid above, so a cyan bead and
+   a cyan ring are one statement made twice. */
+/* The day's list is a different KIND of thing from the month above it - the
+   grid answers "which day", the pills answer "what is on it" - so the step
+   between them is doing more work than the step between two pills, and it was
+   only 7px more (she: "这上下的间隔稍微大一些"). 16 -> 22 above, 9 -> 11
+   between. */
+/* .kp-tl.kp-tl--cal, not .kp-tl--cal: the base .kp-tl rule is LATER in this
+   file and also carries a margin-top, and at equal specificity later wins -
+   so the 22 was quietly losing to its 10. Same trap as the three before it. */
+.kp-tl.kp-tl--cal{margin-top:22px;display:flex;flex-direction:column;gap:11px}
+.kp-tl--cal .kp-tl__i{
+  margin-top:0;display:flex;align-items:center;gap:7px;
+}
+.kp-tl__dot{
+  width:8px;height:8px;border-radius:999px;flex:none;
+  background:var(--dot, var(--kp-brand));
+}
+.kp-tl__pill{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  padding:11px 14px;border-radius:999px;
+  border:1.5px solid var(--kp-line);background:var(--kp-card);
+  color:var(--kp-ink-3);
+}
+.kp-tl__t{flex:1;min-width:0;font-size:11px;font-weight:700;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kp-tl--cal .kp-tl__time{font-size:11px;font-weight:700;color:inherit}
+.kp-tl--cal .kp-ico{color:inherit}
+/* the one you are on */
+.kp-tl__i.is-now .kp-tl__pill{
+  border-width:2.2px;border-color:var(--kp-brand);color:var(--kp-brand);
+}
+
+/* The reminder timeline's rows were still on .kp-task__t's 12.5px, which is
+   the size a task CARD's title takes on Home — a card has one line of type in
+   it and can afford it. A timeline row has an icon, a title, a time and
+   sometimes a bar, and at 12.5 the title was the only one of the four getting
+   any room: it ellipsed at "Continuing work on pr...". 11px is what the
+   calendar's pills and the message bubbles use, which is what this row is. */
+.kp-tl__row .kp-task__t{font-size:11px}
+
+.kp-tl{margin-top:10px}
+.kp-tl__i{margin-top:8px}
+.kp-tl__row{display:flex;align-items:center;gap:9px}
+.kp-tl__row .kp-task__b{flex:1;min-width:0}
+.kp-tl__time{font-size:var(--kp-fs-3);font-weight:700;white-space:nowrap;color:var(--kp-ink-2)}
+.kp-tl__bar{height:3px;border-radius:999px;background:var(--kp-line);margin-top:8px;
+            overflow:hidden}
+.kp-tl__bar i{display:block;height:100%;border-radius:999px;background:var(--kp-grad)}
+.kp-tl__i.on .kp-card{background:var(--kp-grad);border-color:transparent;color:#fff}
+.kp-tl__i.on .kp-task__d,.kp-tl__i.on .kp-tl__time{color:rgba(255,255,255,.82)}
+.kp-tl__i.on .kp-ico{color:#fff}
+
+/* --- calendar ------------------------------------------------------------- */
+.kp-cal{margin-top:12px}
+.kp-cal__head{display:flex;align-items:center;justify-content:space-between}
+/* Rounded squares, not discs (she: "calender 上方 match 这个"). A disc grid
+   reads as a set of buttons; a grid of soft squares reads as a month, which
+   is what it is. Radius 9 on a ~32px cell is her 14 on a 64px one.
+
+   Three states, and only three:
+   - an ordinary day is a quiet tinted tile with no edge at all;
+   - a day with something on it is WHITE with a coloured ring, and the ring's
+     colour is that day's load on the same cyan-to-brand ramp every other
+     reading in this product uses — a cyan ring is a light day, a deep blue
+     one is a full day. Empty inside, so a busy month does not turn into a
+     wall of colour;
+   - the day you are on is filled solid and takes the white numeral.
+
+   The ring is 2.2px because it is the only thing carrying the value: at 1 it
+   read as a border, and a border is a container, not a measurement. Her
+   reference runs about 3.5px on a 64px cell, which is 1.8 on our 33 — but a
+   ring reads lighter than a filled edge at the same width, so it is given the
+   extra fifth. */
+.kp-cal__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+/* The weekday row is a heading, not a caption: in her reference it is the
+   same ink and nearly the same weight as the dates, with a rule under it
+   separating the label row from the month. At 9px in --ink-3 it was reading
+   as a footnote above the grid. The rule is drawn with a shadow so it can run
+   the full width of the row without a seventh element to hang it on. */
+.kp-cal__w{
+  font-size:10.5px;font-weight:700;color:var(--kp-ink);text-align:center;
+  padding-bottom:9px;margin-bottom:5px;
+  box-shadow:0 1px 0 var(--kp-line-2);
+}
+.kp-cal__d{
+  aspect-ratio:1;border-radius:9px;display:grid;place-items:center;
+  font-size:12px;font-weight:700;color:var(--kp-ink);
+  background:var(--kp-brand-tint);
+  border:2.2px solid transparent;
+  transition:background var(--d-2) var(--e-standard), color var(--d-2) var(--e-standard),
+             border-color var(--d-2) var(--e-standard);
+}
+.kp-cal__d.has{border-color:var(--day, var(--kp-brand));background:var(--kp-card)}
+.kp-cal__d.out{color:transparent;background:none;pointer-events:none}
+.kp-cal__d[aria-pressed="true"]{
+  background:var(--kp-brand);color:#fff;border-color:transparent;
+}
+
+/* --- statistics ----------------------------------------------------------- */
+/* --- weekly stats, to her layout -----------------------------------------
+   Card and bar are siblings in a row, stretched to the same height, so the
+   bar is as tall as the card rather than a stack of pills sitting inside it.
+   The card centres its own title and ring; the bar is one gradient block cut
+   by two hairlines. */
+.kp-wstat{display:flex;align-items:stretch;gap:9px}
+.kp-wstat__card{
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
+  gap:12px;padding:14px 12px 16px;
+}
+.kp-wstat__t{
+  font-size:var(--kp-fs-6);font-weight:700;color:var(--kp-ink);
+  letter-spacing:-.01em;
+}
+.kp-wstat__bar{
+  flex:none;width:56px;border-radius:var(--kp-r-l);overflow:hidden;
+  background:var(--kp-grad);color:#fff;
+  display:flex;flex-direction:column;
+}
+.kp-wstat__bar > span{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:6px 4px;
+}
+/* the two rules that make three readings one set */
+.kp-wstat__bar > span + span{border-top:var(--kp-bw-1) solid rgba(255,255,255,.3)}
+.kp-wstat__bar b{font-size:var(--kp-fs-6);font-weight:600;line-height:1.1}
+.kp-wstat__bar small{font-size:var(--kp-fs-3);opacity:.94;margin-top:1px}
+
+.kp-stat{display:flex;align-items:center;gap:12px}
+.kp-bigring{width:74px;height:74px;flex:none;position:relative}
+.kp-bigring svg{width:74px;height:74px;transform:rotate(-90deg)}
+/* 74px across at 12% of its diameter is 8.9 — the same ring as the small ones,
+   scaled. The number is derived rather than typed, which is the whole reason
+   it could follow RING_PEN from .09 to .12 without anyone having to remember
+   this line existed. */
+.kp-bigring circle{fill:none;stroke-width:8.9;stroke-linecap:round}
+.kp-bigring .bg{stroke:var(--kp-brand-tint)}
+.kp-bigring .fg{stroke:var(--kp-brand)}
+.kp-bigring > b{position:absolute;inset:0;display:grid;place-items:center;
+                font-size:17px;font-weight:700}
+.kp-badges{display:flex;flex-direction:column;gap:5px;margin-left:auto}
+/* Flat, not the brand gradient. These three sit in a stack of identical
+   little blocks, and a gradient running through each of them turns a set of
+   three readings into three pieces of decoration — the gradient is carrying
+   no information here, which is the one place it should not be. */
+.kp-badge{background:var(--kp-brand);color:#fff;border-radius:var(--kp-r-s);
+          padding:5px 9px;text-align:center;min-width:48px}
+.kp-badge b{display:block;font-size:12px;font-weight:700;line-height:1.1}
+.kp-badge small{display:block;font-size:var(--kp-fs-1);opacity:.9;margin-top:1px}
+.kp-bars{display:flex;align-items:flex-end;gap:7px;height:96px;margin-top:12px}
+/* :not(--line), because the line view puts a row of day labels inside the
+   same container and this rule was catching it: .kp-bars > div is (0,1,1) and
+   .kp-days7 is (0,1,0), so the labels inherited flex-direction:column and
+   stacked down the card. The third selector this week to hit something it was
+   not aimed at. */
+.kp-bars:not(.kp-bars--line) > div{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;
+  height:100%;justify-content:flex-end;
+}
+/* the track: the scale, drawn, behind every reading */
+.kp-bar{
+  position:relative;display:block;flex:1;width:100%;max-width:11px;
+  border-radius:999px;background:var(--kp-brand-tint);
+}
+.kp-bars i{
+  position:absolute;left:0;right:0;bottom:0;display:block;
+  border-radius:999px;
+  /* the gradient itself is written by draw(): a constant blue at the foot,
+     the value's own colour at the head */
+}
+/* the days are read as often as the bars, so they are set like labels rather
+   than like footnotes */
+.kp-bars small{font-size:9.5px;font-weight:700;color:var(--kp-ink)}
+
+/* --- the same chart as a line, for Month and Year ------------------------ */
+.kp-bars--line{display:block;height:auto}
+.kp-line{width:100%;height:auto;display:block}
+.kp-line__a{fill:url(#kpline);stroke:none}
+/* the stroke is the value ramp read along x; the dots take their own reading */
+.kp-line__p{fill:none;stroke:url(#kplinep);stroke-width:2.6;
+            stroke-linecap:round;stroke-linejoin:round}
+.kp-line__d{fill:#fff;stroke-width:2.2}
+.kp-days7{display:flex;flex-direction:row;margin-top:8px}
+.kp-days7 small{flex:1;text-align:center;font-size:9.5px;font-weight:700;
+                color:var(--kp-ink)}
+
+/* --- records -------------------------------------------------------------
+   The bar is the chart's device laid on its side: one ramp, pinned to the
+   track, each row showing the part it has reached. Two rows with the same
+   percentage are therefore the same colour, and a fuller one is bluer —
+   which is the whole reason the number beside it can be small. */
+.kp-rec{display:flex;align-items:center;gap:11px;margin-top:9px}
+.kp-rec__ico{
+  width:36px;height:36px;border-radius:var(--kp-r-s);flex:none;display:grid;
+  place-items:center;background:var(--kp-brand-tint);
+}
+.kp-rec__b{flex:1;min-width:0}
+.kp-rec__b b{display:block;font-size:11px;font-weight:700;color:var(--kp-ink)}
+.kp-rec__bar{
+  display:block;height:7px;margin-top:7px;border-radius:999px;
+  background:var(--kp-brand-tint);overflow:hidden;
+}
+.kp-rec__bar i{
+  display:block;height:100%;border-radius:999px;
+  /* same rule as the chart, laid on its side; the gradient comes from JS */
+}
+.kp-rec__p{font-size:11px;font-weight:700;flex:none}
+
+/* --- messages ------------------------------------------------------------- */
+/* --- the thread ----------------------------------------------------------
+   A row per message: the bubble, then the time under it on the bubble's own
+   side. The time used to be inside the bubble, which turned every bubble into
+   a small card with a caption; in her reference the bubble is only the words.
+
+   The gradient is gone and the tails are back (she: "气泡脚做出来"). Those
+   were two different asks and I had folded them into one: dropping the
+   gradient is what made the bubbles simple, and the tail was collateral. One
+   flat brand blue outgoing, one white card incoming, each with a foot.
+
+   The foot is a square rotated 45 degrees tucked behind the bubble's bottom
+   corner, taking background AND border by inherit — so the incoming one keeps
+   its outline and the outgoing one does not need the colour repeated. It sits
+   at z-index -1, which is why the row above it is isolated: without that, a
+   negative index escapes its parent and paints behind the device. */
+/* The 7px of side padding is what makes the feet visible. They are pseudos
+   hanging 6px outside the bubble, the bubbles sit flush against the ends of
+   their rows, and overflow-x:hidden — which overflow-y:auto forces — was
+   cutting every one of them off at the container edge. Nothing was wrong with
+   the feet; there was nowhere for them to be. */
+.kp-msgs{
+  display:flex;flex-direction:column;gap:11px;
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding:12px 9px 4px;
+  scrollbar-width:none;
+}
+.kp-msgs::-webkit-scrollbar{display:none}
+.kp-msgrow{display:flex;flex-direction:column;align-items:flex-start;max-width:84%;
+           isolation:isolate}
+.kp-msgrow--me{align-self:flex-end;align-items:flex-end}
+/* 8, not 5: the tail hangs 5px below the bubble, and the timestamp used to
+   start inside that. */
+.kp-msgrow > small{font-size:8.5px;color:var(--kp-ink-3);margin-top:8px;padding:0 3px}
+.kp-msg{
+  position:relative;
+  padding:10px 12px;
+  /* uniform 14 except the corner the tail grows from, which is tight so the
+     body's edge runs straight up to where the tail leaves it */
+  border-radius:14px 14px 14px 4px;
+  font-size:11px;line-height:1.55;
+  background:var(--kp-brand-tint);color:var(--kp-ink);
+  /* --- the tail, DRAWN ---------------------------------------------------
+     Every earlier version built this by SUBTRACTION: a rectangle of bubble
+     colour with a second rectangle of page colour biting a curve out of it.
+     That works, but the silhouette is never described anywhere — it is
+     whatever two boxes happen to leave behind — so every edge of it is a
+     place two rectangles meet, and getting them to meet cleanly was the whole
+     game. Twelve rounds of it, and the last bug was a two-pixel sliver of the
+     first box surviving beside the bubble because the second one started
+     outside it.
+
+     She asked the question that ends all of that: why have a seam at all,
+     can you not just draw the shape?
+
+     You can, and the reason I had not is that I assumed a fixed path could
+     not work on a bubble whose height follows its text. But the TAIL does not
+     follow the text — it is a fixed-size corner ornament, and only the body
+     stretches. So one path states its outline exactly. The path goes in a
+     mask; the layer under it is filled with the bubble's own colour, so the
+     per-bubble gradient still carries. No second box, no bite, nothing to
+     align, and the part of the path that falls inside the body is simply
+     painted over by the body.
+
+     Drawn in a 20x23 box where the bubble's right edge is x=13 and its bottom
+     edge is y=18, so the path starts and ends inside the body. The tip sits
+     5.5 out and only 1.6 below — level with the bottom, not hanging off it. */
+  --kp-tail:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 23' preserveAspectRatio='none'%3E%3Cpath d='M2 5 L13 5 C13.4 10.8 14.9 16.7 18.5 19.6 C14.8 19.5 8.6 18.2 2 15.6 Z' fill='%23000'/%3E%3C/svg%3E");
+}
+/* z-index:-1 is why .kp-msgrow carries isolation:isolate — a negative index
+   escapes an unisolated parent and paints behind the phone. */
+.kp-msg::before{
+  content:"";position:absolute;z-index:-1;
+  left:-7px;bottom:-5px;width:20px;height:23px;
+  background:inherit;
+  transform:scaleX(-1);
+  -webkit-mask:var(--kp-tail) 0 0/100% 100% no-repeat;
+          mask:var(--kp-tail) 0 0/100% 100% no-repeat;
+}
+
+/* --g and --foot are written per bubble by paintThread(): each one its own
+   gradient, placed on the cyan-to-brand ramp by how old the message is. The
+   fallbacks are the product's fixed gradient, for any bubble the script has
+   not reached yet. */
+.kp-msg--me{
+  border-radius:14px 14px 4px 14px;
+  background:var(--g, var(--kp-grad));color:#fff;
+}
+/* The tail cannot inherit a diagonal gradient onto a 20px box and still line
+   up, so it takes the colour the gradient already is at that corner: 152deg
+   runs blue to cyan toward the bottom, and the tail is at the bottom. */
+.kp-msg--me::before{
+  left:auto;right:-7px;transform:none;background:var(--foot, var(--kp-cyan));
+}
+
+/* --- the composer --------------------------------------------------------
+   It was sticky inside the scrolling screen, and a bubble got out from under
+   it and ran off the bottom of the device (she: "确保底部都是 message 栏目").
+   Sticky only promises to stop at the scrollport edge; it does not stop
+   anything else from painting past it.
+
+   So the chat screen does not scroll at all now. It is a column — bar,
+   thread, composer — and the THREAD is the only thing with overflow. The
+   composer is an ordinary flex item at the end of that column, which makes it
+   structurally impossible for a message to appear below it. */
+.kp-screen--chat{display:flex;flex-direction:column;overflow:hidden;
+                 padding-top:2px;padding-bottom:0}
+.kp-compose{
+  display:flex;align-items:center;gap:9px;flex:none;
+  background:var(--kp-bg);
+  border-top:1px solid var(--kp-line-2);
+  /* Taller than it was, twice (she: "发送 message 的栏目可扩大一些",
+     then "message 栏目扩大"). It is the one thing on the screen you are meant
+     to reach for, and at 43px it read as a caption under the thread rather
+     than a place to type. 43 -> 53 -> 63. */
+  padding:19px 2px 21px;
+}
+.kp-clip{display:grid;place-items:center;color:var(--kp-ink-3);flex:none}
+/* 20 and a 1.4px pen, where every other icon here is 2. The clip is the one
+   glyph on this screen with a shape inside a shape, and the size follows from
+   that: see the note on the path in keeplan.js for the arithmetic. */
+.kp-clip .kp-ico{width:20px;height:20px;stroke-width:1.4}
+.kp-compose input{flex:1;min-width:0;border:0;background:transparent;font-size:13px;
+                  font-family:inherit;color:var(--kp-ink)}
+.kp-compose input::placeholder{color:var(--kp-ink-3)}
+.kp-compose input:focus{outline:0}
+/* 22, and a 10px chevron inside it. At 26 with a 13 the disc was still the
+   loudest thing on a screen whose subject is the conversation. The chevron is
+   centred on its own geometry by fitIcons, which for a ">" puts its mass left
+   of middle — the tip is all whitespace — so it gets half a pixel back. */
+.kp-send{
+  width:22px;height:22px;border-radius:999px;background:var(--kp-brand);
+  color:#fff;display:grid;place-items:center;flex:none;border:0;padding:0;
+  transition:background var(--d-2) var(--e-standard), transform var(--d-1) var(--e-standard);
+}
+.kp-send .kp-ico{width:10px;height:10px;transform:translateX(.5px)}
+.kp-send:hover{background:var(--kp-brand-dark)}
+.kp-send:active{transform:scale(.92)}
+
+/* --- edit profile --------------------------------------------------------- */
+.kp-avatar{
+  width:62px;height:62px;border-radius:999px;margin:10px auto 0;
+  background:var(--kp-brand-tint);color:var(--kp-brand);display:grid;place-items:center;
+}
+.kp-avatar .kp-ico{width:26px;height:26px}
+.kp-upload{display:grid;place-items:center;margin-top:9px;color:var(--kp-ink-3)}
+.kp-prow{display:flex;align-items:center;gap:10px;padding:11px 0;
+         border-bottom:1px solid var(--kp-line-2)}
+/* The field is a button now, so it needs the button chrome taken off and a
+   press state put on: a tint on hover, the value underlined in the brand
+   colour, and a text cursor, which is the one signal that says "this opens
+   for typing" rather than "this goes somewhere". */
+.kp-prow__b{
+  flex:1;min-width:0;display:block;text-align:left;
+  background:none;border:0;font:inherit;color:inherit;cursor:text;
+  margin:-5px -7px;padding:5px 7px;border-radius:var(--kp-r-s);
+  transition:background var(--d-1) var(--e-standard);
+}
+.kp-prow__b:hover{background:var(--kp-brand-tint)}
+.kp-prow__b:hover .kp-prow__v{text-decoration:underline;
+  text-decoration-color:var(--kp-brand-soft);text-underline-offset:3px}
+.kp-prow__b:focus-visible{outline:2px solid var(--kp-brand);outline-offset:1px}
+/* the open field: same label, same place; the value becomes a line to type on */
+.kp-prow__edit{cursor:auto}
+.kp-prow__edit:hover{background:none}
+.kp-prow__in{
+  display:block;width:100%;
+  font:inherit;font-size:12.5px;color:var(--kp-ink);
+  background:transparent;border:0;border-bottom:1.5px solid var(--kp-brand);
+  padding:1px 0 2px;margin:1px 0 0;outline:none;border-radius:0;
+}
+.kp-prow__k{font-size:var(--kp-fs-2);letter-spacing:.06em;text-transform:uppercase;
+            color:var(--kp-ink-3);display:block}
+.kp-prow__v{font-size:12.5px;margin-top:2px;display:block;
+            transition:filter var(--d-2) var(--e-standard)}
+.kp-prow.hid .kp-prow__v{filter:blur(4px);user-select:none}
+.kp-eye{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;
+        color:var(--kp-ink-3);flex:none;
+        transition:background var(--d-1) var(--e-standard), color var(--d-1) var(--e-standard)}
+.kp-eye:hover{background:var(--kp-brand-tint);color:var(--kp-brand)}
+.kp-prow.hid .kp-eye{color:var(--kp-brand)}
+.kp-note{
+  margin-top:14px;padding:10px 12px;border-radius:var(--kp-r-m);
+  background:var(--kp-brand-tint);border:1px solid var(--kp-brand-soft);
+  font-size:10.5px;color:var(--kp-brand-dark);line-height:1.55;
+  display:flex;gap:9px;align-items:flex-start;
+}
+.kp-note .kp-ico{color:var(--kp-brand);margin-top:1px}
+
+/* --- tab bar -------------------------------------------------------------- */
+.kp-tabs{
+  flex:none;height:62px;display:grid;grid-template-columns:repeat(5,1fr);
+  align-items:center;justify-items:center;
+  background:var(--kp-card);border-top:1px solid var(--kp-line);
+  padding-bottom:6px;position:relative;
+}
+.kp-tab{display:grid;place-items:center;gap:3px;color:var(--kp-ink-3);font-size:8.5px;
+        transition:color var(--d-2) var(--e-standard)}
+.kp-tab[aria-current="page"]{color:var(--kp-brand)}
+/* Solid brand on the four flat tabs, not the blue-to-cyan stroke (she: "除了
+   + 键都做成 solid 的蓝色"). At 18px a two-stop gradient across a 2px stroke
+   is not read as a gradient, it is read as an icon that fades out at one end.
+   The + keeps it, because there the gradient is a 44px FILL and is the one
+   place on this bar it has room to be itself. Which tab you are on is still
+   said by the label underneath.
+
+   --kp-brand-dark, not --kp-brand (she: "再做深色一些"). At 2px the brand blue
+   sat almost exactly as light as the grey labels under it, so the row read as
+   one weight all the way across; the darker blue gives the glyphs the weight
+   the words do not have. */
+.kp-tab:not(.kp-tab--add) .kp-ico{stroke:var(--kp-brand-dark)}
+/* The + is white on the brand gradient, on every screen including its own.
+   .kp-tab[aria-current="page"] paints the current tab brand blue, which is
+   right for the five flat ones and wrong for this one: on New Task the plus
+   was brand blue ON the brand gradient, which is to say gone. The state
+   selector is (0,2,0) and the base rule was (0,1,0), so it won — this one is
+   written at (0,2,0) as well and later in the file, which is what stops it.
+
+   It is the one control on the bar that is always available, so it is the one
+   that must never change to say "you are here". */
+.kp-tab--add,
+.kp-tab--add[aria-current="page"]{
+  width:44px;height:44px;border-radius:999px;background:var(--kp-grad);
+  color:#fff;margin-top:-16px;box-shadow:0 6px 16px rgba(11,95,208,.35);
+  transition:transform var(--d-3) var(--e-spring);
+}
+.kp-tab--add:hover{transform:translateY(-2px)}
+.kp-tab--add .kp-ico{width:21px;height:21px;stroke-width:2.2}
+
+/* --- toast inside the device ---------------------------------------------- */
+.kp-toast{
+  position:absolute;left:16px;right:16px;bottom:76px;z-index:8;
+  background:var(--kp-ink);color:#fff;border-radius:var(--kp-r-m);
+  padding:10px 12px;font-size:11px;display:flex;align-items:center;gap:9px;
+  box-shadow:0 10px 26px rgba(13,27,42,.45);
+}
+.kp-toast .kp-ico{color:var(--kp-cyan)}
+
+/* The create button's wait. A static icon reads as a frozen screen. */
+.kp-spin{animation:kp-spin 900ms linear infinite;transform-origin:center}
+@keyframes kp-spin{to{transform:rotate(360deg)}}
+:root[data-motion="off"] .kp-spin{animation:none}
+
+/* --- the written case study ----------------------------------------------- */
+.notes{display:grid;gap:clamp(10px,1.2vw,16px);
+       grid-template-columns:repeat(auto-fit,minmax(272px,1fr))}
+.note{background:var(--surface);border-radius:var(--r-l);padding:21px 23px 23px}
+.note h3{margin:0}
+.note .src{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.1em;
+           text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:9px}
+.note p{margin-top:11px;font-size:14px;color:var(--ink-2);line-height:1.62}
+.note ul{margin:11px 0 0;padding-left:19px;font-size:14px;color:var(--ink-2);line-height:1.6}
+.note li{margin-top:7px}
+.note li b,.note p b{color:var(--ink);font-weight:500}
+/* A 2px border was the last straight ruled line left in the case study, and
+   it was sitting next to the one thing on the page written by a person. It is
+   a drawn stroke now — the site's pen, turned vertical — and neighbouring
+   quotes get different ones so a column of them does not stack into a
+   pattern. */
+.note blockquote{
+  position:relative;
+  margin:14px 0 0;padding:12px 15px 12px 21px;border-radius:var(--r-s);
+  background:var(--surface-2);
+  font-size:13.5px;color:var(--ink-2);line-height:1.6;
+}
+.note blockquote::before{
+  content:"";position:absolute;left:4px;top:9px;bottom:9px;width:7px;
+  background:var(--accent);
+  -webkit-mask:var(--qpen,var(--wiggle-v1)) no-repeat center/100% 100%;
+  mask:var(--qpen,var(--wiggle-v1)) no-repeat center/100% 100%;
+}
+/* which pen each quote gets is site.js's job: nth-of-type counts within one
+   card, so two cards side by side both started at pen one and the four quotes
+   on screen only ever used two of the four */
+.note blockquote cite{display:block;margin-top:8px;font-style:normal;
+                      font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+
+.prose{max-width:68ch}
+.prose h3{font-size:19px;font-weight:400;letter-spacing:-.022em;margin:34px 0 0}
+.prose h3:first-child{margin-top:0}
+.prose p{margin-top:13px;color:var(--ink-2);font-size:16px;line-height:1.66}
+.prose p b{color:var(--ink);font-weight:500}
+
+.figs{display:grid;gap:1px;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+      background:var(--line-soft);border:1px solid var(--line-soft);
+      border-radius:var(--r-m);overflow:hidden;margin-top:26px}
+.figs div{background:var(--bg);padding:16px 17px}
+.figs b{display:block;font-size:26px;font-weight:400;letter-spacing:-.03em;
+        color:var(--accent-line)}
+.figs span{display:block;font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.4}
+
+.goals{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(238px,1fr))}
+.goal{display:flex;gap:11px;align-items:flex-start;background:var(--surface);
+      border-radius:var(--r-m);padding:15px 16px}
+.goal svg{width:18px;height:18px;flex:none;fill:none;stroke:var(--accent);
+          stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+.goal span{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+.people{display:grid;gap:clamp(10px,1.2vw,16px);
+        grid-template-columns:repeat(auto-fit,minmax(252px,1fr))}
+.person{background:var(--surface);border-radius:var(--r-l);padding:20px 22px 22px}
+.person h3{margin:0}
+.person .meta{font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-3);margin-top:6px}
+.person q{display:block;margin-top:13px;font-size:13.5px;color:var(--ink);
+          line-height:1.55;font-style:italic}
+.person p{margin-top:12px;font-size:13px;color:var(--ink-2);line-height:1.55}
+.person .pains{margin-top:13px;display:flex;flex-wrap:wrap;gap:6px}
+.person .pains span{font-size:11px;padding:4px 9px;border-radius:999px;
+                    background:var(--surface-2);color:var(--ink-2)}
+
+.swatches{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.sw{flex:1 1 44px;min-width:44px}
+.sw i{display:block;height:50px;border-radius:var(--r-s);border:1px solid var(--line-soft)}
+.sw b{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;
+      color:var(--ink-3);margin-top:7px}
+.sw span{display:block;font-size:11px;color:var(--ink-2);margin-top:2px}
+.iconwall{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));
+          gap:8px;margin-top:16px}
+.iconwall figure{margin:0;display:grid;justify-items:center;gap:6px;
+                 padding:12px 4px;border-radius:var(--r-s);background:var(--surface-2)}
+.iconwall svg{width:20px;height:20px;fill:none;stroke:var(--accent);stroke-width:1.7;
+              stroke-linecap:round;stroke-linejoin:round}
+.iconwall figcaption{font-family:var(--mono);font-size:var(--fs-nano);color:var(--ink-3)}
+.spec{margin-top:14px;border-top:1px solid var(--line);
+      display:grid;grid-template-columns:auto 1fr}
+.spec dt,.spec dd{padding:9px 0;border-bottom:1px solid var(--line-soft);
+                  font-size:12.5px;margin:0}
+.spec dt{color:var(--ink-3);padding-right:20px;white-space:nowrap}
+.spec dd{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+
+/* --- page header ---------------------------------------------------------- */
+.back{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;color:var(--ink-3);text-decoration:none;
+  padding:6px 12px 6px 9px;border-radius:999px;margin-left:-9px;
+  transition:background var(--d-1) var(--e-standard), color var(--d-1) var(--e-standard);
+}
+.back:hover{background:var(--tint);color:var(--ink)}
+.back svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;
+          stroke-linecap:round;stroke-linejoin:round}
+.phero{padding:clamp(34px,6vw,64px) 0 clamp(22px,3.4vw,38px)}
+/* Size and weight come from site.css, which owns every heading now. The
+   gradient that used to sit on the em was clipped to the text and painted
+   with var(--kp-cyan), a variable that only exists inside .kp, so the word
+   rendered transparent over nothing. */
+.phero h1{margin-top:18px}
+.phero p{margin-top:22px;max-width:58ch;color:var(--ink-2);
+         font-size:clamp(16px,1.35vw,18.5px);line-height:1.58}
+.facts{margin-top:32px;display:grid;gap:1px;
+       grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+       background:var(--line-soft);border:1px solid var(--line-soft);
+       border-radius:var(--r-m);overflow:hidden}
+.facts div{background:var(--bg);padding:15px 17px}
+.facts dt{font-size:var(--fs-micro);font-family:var(--mono);letter-spacing:.1em;
+          text-transform:uppercase;color:var(--ink-3)}
+.facts dd{margin:7px 0 0;font-size:14.5px;color:var(--ink);line-height:1.4}
+
+
+/* ==========================================================================
+   The deck, brought to the case study
+   --------------------------------------------------------------------------
+   Her deck's colours, sampled off the PDF with PIL rather than guessed:
+   paper #f5f5ef, yellow #ffde2a, blue #1b48ab, red #ec3c3c.
+
+   Two things were tried and dropped. Painting whole pages in those colours
+   was her deck but not this site. Then the colour moved onto rules and bands,
+   and there was too much of it: a 2px stripe down every note and a highlighter
+   under every bold sentence adds up to a page with stripes on it.
+
+   Where it landed: the page keeps its own background, boxes are rounded like
+   everything else on the site, and each section gets one small pill in one of
+   her colours. The composition does the work; the colour only points.
+   ========================================================================== */
+
+/* The deck's own yellow, blue and red are gone. Three more colours on a site
+   that already has six was three more colours, and they did not move when the
+   brightness and greyness knobs moved. A section picks one of the site's six
+   instead, so the case study goes dark and grey with everything else. */
+.section[data-accent="yellow"]{--pd:var(--c5)}
+.section[data-accent="azure"] {--pd:var(--c1)}
+.section[data-accent="orange"]{--pd:var(--c3)}
+.section[data-accent] .section__head[data-kicker]::before{color:var(--on-accent)}
+
+/* --- the composition ------------------------------------------------------
+   Title in the left third, text in the right two, a hairline between. That is
+   how every slide in her deck reads, and it is the part that makes a wall of
+   research skimmable. */
+@media (min-width:920px){
+  .page--doc.page--top .section{
+    display:grid;
+    grid-template-columns:minmax(180px,.68fr) minmax(0,2.1fr);
+    column-gap:clamp(24px,3vw,52px);
+    align-items:start;
+  }
+  .page--doc.page--top .section > *{grid-column:2;margin-top:0}
+  .page--doc.page--top .section > * + *{grid-column:2;margin-top:clamp(16px,2vh,24px)}
+  .page--doc.page--top .section__head{
+    grid-column:1;grid-row:1 / span 40;
+    margin:0;padding-right:clamp(18px,2.2vw,36px);
+    border-right:1px solid var(--line);
+    align-self:stretch;
+  }
+}
+.page--doc.page--top .section__head p{max-width:30ch;color:var(--ink-2)}
+
+/* the one coloured thing in a section */
+.page--doc .section__head[data-kicker]::before{
+  content:attr(data-kicker);
+  display:inline-block;margin-bottom:13px;
+  background:var(--pd, var(--ink));color:var(--bg);
+  font-family:var(--font);font-size:var(--pill-s-fs);font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;
+  padding:var(--pill-s-pad);border-radius:var(--pill-r-b);
+}
+/* The all-caps heading is the CV device and it runs the rest of the site.
+   The case study is long-form reading, and three lines of caps is a wall
+   before it is a title, so this chapter sets its headings as written.
+   The label above stays in caps, which is the mix. */
+.page--doc .section__head h2{
+  text-transform:none;
+  letter-spacing:var(--display-track, -.022em);
+}
+.page--doc .section__head h2::after{background:var(--pd, var(--ink))}
+
+.page--cover .eyebrow{
+  display:inline-flex;background:var(--ink);color:var(--bg);
+  padding:var(--pill-s-pad);border-radius:var(--pill-r-a);
+  letter-spacing:.13em;font-size:var(--pill-s-fs);
+}
+.page--cover .eyebrow::before{display:none}
+
+/* --- boxes ----------------------------------------------------------------
+   Rounded, filled, no borders, same radius as every other card on the site.
+   The label rides on top as a pill instead of a rule down the side. */
+.page--doc .note{
+  background:var(--surface);border:0;border-radius:var(--r-l);
+  padding:17px 20px 19px;
+}
+/* a label, not a chip: it names the source, it is not something you press */
+.page--doc .note .src{
+  display:block;margin:0 0 7px;padding:0;background:none;
+  color:var(--ink-3);font-size:var(--fs-micro);letter-spacing:.09em;
+}
+.page--doc .note blockquote::before{background:var(--pd, var(--line))}
+
+/* the highlighter, kept to a line rather than a block */
+.page--doc .prose b,
+.page--doc .note p b,
+.page--doc .note li b{
+  color:var(--ink);font-weight:700;
+  /* Down again and thinner. At 76% it sat on the descenders; at 16% tall it
+     was a block behind the words rather than a line under them. A marker
+     stroke is something you draw under a line, not over it. */
+  background:linear-gradient(transparent 88%, var(--c5) 88%, var(--c5) 97%, transparent 97%);
+}
+.page--doc .prose em,.page--doc .note em{font-style:italic;color:var(--ink)}
+
+/* seven goals, numbered, in pills */
+.page--doc .goals{counter-reset:pdg}
+.page--doc .goal{
+  background:var(--surface);border-radius:var(--r-m);align-items:center;
+  padding:11px 15px 11px 11px;
+}
+.page--doc .goal svg{display:none}
+.page--doc .goal::before{
+  counter-increment:pdg;content:counter(pdg,decimal-leading-zero);
+  flex:none;width:21px;height:21px;border-radius:999px;
+  background:var(--accent);color:var(--on-accent);
+  font-family:var(--mono);font-size:9px;
+  display:grid;place-items:center;
+}
+
+/* --- personas -------------------------------------------------------------
+   The yellow name band was her deck's, and on a page of three cards it read
+   as three labels shouting the same thing. The name is a name now. */
+.page--doc .person{
+  background:var(--surface);border-radius:var(--r-l);padding:18px 20px 20px;
+}
+.page--doc .person h3{
+  margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em;
+}
+.page--doc .person q{
+  border-left:2px solid var(--pd, var(--line));padding-left:10px;font-style:italic;
+}
+
+
+/* Forty-one icons in a note in the right column came out 238px wide and 993
+   tall, which is a column of icons, not a set of them. Out of the note and
+   across the page instead: fifteen to a row, three rows, one glance. */
+.page--doc .iconwall{
+  grid-template-columns:repeat(auto-fill,minmax(50px,1fr));
+  gap:10px 6px;background:var(--surface);border-radius:var(--r-m);
+  padding:16px 14px;
+}
+.page--doc .iconwall svg{width:18px;height:18px}
+.page--doc .iconwall figcaption{font-size:var(--fs-nano)}
+
+.page--doc .spec dt,.page--doc .spec dd{border-bottom-style:dotted}
+.page--doc .facts,.page--doc .figs{
+  background:none;gap:8px;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));
+}
+.page--doc .facts div,.page--doc .figs div{
+  background:var(--surface);border-radius:var(--r-m);
+}
+
+/* --- the prototype page ---------------------------------------------------
+   Two columns pinned to the two edges left a hole down the middle of the page
+   and put the list against the left margin. They are a pair now: centred
+   together, with the gap between them doing the spacing instead of the page.
+
+   And the rail had gone cold — grey filled rows, solid numbered discs, a
+   panel of controls rather than a list of screens. The fills come off, the
+   numbers become drawn circles, and a hand-drawn line runs down through them,
+   which is what a flow actually looks like when somebody sketches one. */
+.page--flow .kp{
+  display:flex;justify-content:center;align-items:center;
+  gap:clamp(26px,5vw,92px);
+}
+.page--flow .flow{flex:0 1 auto;width:min(384px,100%);max-height:100%}
+/* No scrollbar on this page (she: "取消这里的下滑 bar"). Dropping Step 2 took
+   the list down to 13 and it fits again at the sizes I can measure — but a
+   shorter window would bring the bar straight back, and this page is one
+   screen's worth of content by design. The rest of the site hides its
+   scrollbars too; this one had been left on `thin`. */
+.page--flow{scrollbar-width:none}
+.page--flow::-webkit-scrollbar{display:none}
+.page--flow .kp-phone{margin-inline:0}
+/* this sheet loads after site.css, so the phone breakpoint has to be repeated
+   here or the two columns stay side by side on a phone */
+@media (max-width:860px){
+  .page--flow .kp{display:block}
+  .page--flow .flow{width:auto}
+  .page--flow .kp-phone{margin-inline:auto}
+}
+
+/* The line the numbers hang on. One stroke, stretched to the measured
+   distance between the first circle and the last, sitting behind them: it
+   used to be a repeating tile, which drifted against the rows and crossed the
+   circles as soon as the open row changed the rhythm. */
+.page--flow .flow__list{position:relative}
+/* Same pen as everywhere else. It was drawn 1.3 wide in a 7-unit box and
+   stretched down a whole column, which rendered at about 1.3px — half the
+   site's stroke. The box is 7px wide and the viewBox is 7 units wide, so the
+   horizontal scale is 1 and the number in the data URI is real pixels: 2.8.
+   It was black at .5 opacity, which on white is a charcoal rule — heavier
+   than the numbers it is supposed to sit behind (she: "轨道做浅色，现在太深色了").
+   It is now drawn in the pale end of the site's own ramp instead of black, so
+   it reads as a guide the numbers are threaded onto rather than a rule
+   competing with them. Opacity back to 1: the colour is doing the work now,
+   and a solid pale line is steadier than a half-transparent dark one. */
+.flow__line{
+  position:absolute;z-index:0;width:7px;margin-left:-3.5px;
+  pointer-events:none;opacity:1;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 120' preserveAspectRatio='none'%3E%3Cpath d='M3.5 0C2.6 24 4.4 48 3.5 72 2.6 96 4.2 108 3.5 120' fill='none' stroke='%23bcd4ea' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E")
+             0 0 / 7px 100% no-repeat;
+}
+.page--flow .flow__list li{position:relative;z-index:1}
+
+.page--flow .flow__step{
+  background:none;border-radius:var(--pill-r-a);
+  padding:7px 11px;
+  transition:background var(--d-1) var(--e-standard),
+             color var(--d-1) var(--e-standard);
+}
+/* No tilt here. A row in a list is not a pill you press; eleven of them
+   leaning one at a time reads as a wobble, not as a response. */
+.page--flow .flow__step:hover{background:var(--surface)}
+.page--flow .flow__step[aria-current="step"]{background:var(--surface-2)}
+
+/* the numbers: drawn circles, not discs. The one you are on is filled. */
+/* the circle is opaque so the connector reads as running behind the numbers
+   rather than straight through them */
+.page--flow .flow__n{
+  background:var(--bg);color:var(--ink-3);position:relative;z-index:1;
+}
+.page--flow .flow__step:hover .flow__n{background:var(--surface)}
+.page--flow .flow__step[aria-current="step"]:hover .flow__n{background:var(--c1)}
+/* One ring, not two. Same call as the icon buttons: drawn-twice-and-offset is
+   how a pill reads as a shape somebody drew, but on a small circle at two
+   different opacities it reads as a ring that has not finished rendering —
+   and there are eleven of them in a column here, so it read as eleven. */
+.page--flow .flow__n::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  border-radius:999px;border:1.4px solid currentColor;opacity:.55;
+}
+/* A finished step used to have no background at all, and the connector runs
+   behind the numbers — so the line went straight through the digit and the
+   step read as crossed out. Every other state masks the line with its own
+   ground; this one had nothing to mask it with.
+
+   It could just have been given the page's ground back, but then "done" would
+   look exactly like "not yet" with a paler number. So it is filled instead: a
+   quiet disc, no ring, the number stepped back. Struck through says the step
+   was cancelled; filled and quiet says it is behind you. */
+/* --tone and --tone-ink are written per step by keeplan.js: the site's own
+   six-stop ramp, light at the start of the flow and dark at the end, with the
+   numeral picked against whichever stop it landed on. */
+.page--flow .flow__step.is-done .flow__n,
+.page--flow .flow__step[aria-current="step"] .flow__n{
+  background:var(--tone, var(--surface-2));
+  color:var(--tone-ink, #fff);
+}
+.page--flow .flow__step.is-done .flow__n::before,
+.page--flow .flow__step[aria-current="step"] .flow__n::before{opacity:0}
+/* the one you are on is the only one that also gets the accent ring */
+.page--flow .flow__step[aria-current="step"] .flow__n{
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+
+/* the two words above the list stop shouting */
+.page--flow .flow__head{color:var(--ink-3);letter-spacing:.12em}
+
+/* --- the two diagrams she drew, redrawn ----------------------------------- */
+/* Every band in both drawings is the same azure at a different opacity over a
+   light surface, so there is no fill here that white can sit on: it ran from
+   2.3:1 on the solid top band down to about 1.1:1 on the palest one. Ink works
+   on all of them, because even the solid azure is only .41 luminance — 7.4:1
+   against the ink, and better the paler the band gets. One colour for the
+   whole figure also stops the labels changing meaning as they cross an edge,
+   which they have to do: the apex of a pyramid is narrower than the words
+   naming it.
+
+   And the size went up. At 8.5px in a 260-wide viewBox drawn at 250px these
+   rendered at 8.2 and 7.7 real pixels, which is below anything else on the
+   site by a wide margin — the smallest token is --fs-nano at 9px. */
+.pd-fig{width:100%;height:auto;max-width:250px;margin:12px 0 2px;display:block}
+.pd-fig text{
+  font-family:var(--font);font-size:10px;font-weight:600;
+  fill:var(--ink);letter-spacing:.01em;
+}
+/* .pd-fig text is (0,1,1) and .pd-fig__off was (0,1,0), so the white in the
+   rule above won and the secondary labels were never secondary at all. The
+   same shape of bug as .colophon under .about p — name the parent. */
+.pd-fig text.pd-fig__off{fill:var(--ink-2);font-weight:500}
+.pd-fig text.pd-fig__in{font-size:9.5px}
+/* --- both figures rebuilt to be balanced ---------------------------------
+   The pyramid's five tiers were 40, 28, 28, 20 and 12 units tall — the top
+   one more than three times the bottom one — and every label sat near the
+   FOOT of its tier rather than its middle. Worse, the two labels that matter
+   were inside the two narrowest tiers: "Self-actualization" needs about 95
+   units and the apex tier is 25 wide at its base, so the words hung out over
+   the white on both sides.
+
+   Now the tiers are derived, not placed: five equal bands of 24.64 with 2.2
+   between them, and the half-width at any depth is 68 * (y-8)/132, so every
+   vertex falls out of one line of arithmetic. The labels moved out to a
+   single left-aligned column at x=168 — they cannot overflow a shape they
+   are no longer inside — each on its tier's own centreline, with a leader
+   from the tier's edge. The leaders are ragged at the left because the
+   pyramid is, and flush at the right because the type is.
+
+   The circles were the same kind of drift: "Fitness, family" sat at y=146 in
+   a band whose middle is 129.5, which put it on the outer edge of the outer
+   ring. The radii came in from 72/47/25 to 66/43/23 so the figure is not
+   touching its own box, and the five rows now sit at 20.5, 42, 75, 108 and
+   129.5 — 54.5 and 33 either side of the centre, symmetrical to the decimal. */
+.pd-fig__tick line{stroke:var(--line);stroke-width:1}
+.pd-fig text[x="142"]{text-anchor:start}
+
+@media (max-width:919px){
+  .page--doc.page--top .section__head{border-right:0}
+}
+
+
+/* This sheet loads after site.css, so the label pills take the shared sizes
+   and the drawn edges here, or the rules over there never land. */
+.page--doc .person .pains span{
+  padding:var(--pill-s-pad);
+  font-size:var(--pill-s-fs);
+  border-radius:var(--pill-r-a);
+}
+.page--doc .person .pains span:nth-child(3n+2){border-radius:var(--pill-r-b)}
+.page--doc .person .pains span:nth-child(3n){border-radius:var(--pill-r-c)}
+
+/* --- one place for the button, everywhere before Home ----------------------
+   Her own screens do not agree about this: Welcome puts Start on the floor at
+   88%, Sign In puts its button under the password field halfway up. She asked
+   for one position across the whole run-in, and she is right — four screens in
+   a row, each asking one question, should not move the answer around.
+
+   All four are pinned to the line Welcome already had: 88.1% down the phone.
+   Absolute rather than a grid row, because the four screens have four
+   different layouts above the button and only the button has to agree.
+
+   Last in the file and with a parent in the selector on purpose: .kp-btn sets
+   its own height at the same specificity, and whichever is written later wins.
+   The first version of this rule sat near the top and lost. */
+.kp-screen .kp-cta{
+  /* 32. It went to 22 and then 12 while I was moving the wrong button: what
+     she wanted lower was the BACK button, not this one. */
+  position:absolute;left:18px;right:18px;bottom:32px;
+  height:42px;min-height:0;width:auto;margin:0;
+}
+
+/* --- the finger -----------------------------------------------------------
+   The pale circle from her recording, standing in for the mouse pointer while
+   you are inside the device. It does not wait for a transition to follow the
+   pointer — that is a frame loop, because a cursor that lags is a cursor that
+   is broken — but it does ease its own size when you press. */
+/* Not just the phone: every element inside it. A button sets its own
+   cursor:pointer and an input sets text, so hiding it on the container alone
+   left the arrow coming back the moment you were over anything worth
+   pressing — which is most of the screen. */
+.kp-phone.is-touched,
+.kp-phone.is-touched *{cursor:none !important}
+.kp-touch{
+  position:absolute;left:0;top:0;z-index:30;
+  width:26px;height:26px;margin:-13px 0 0 -13px;
+  border-radius:999px;background:rgba(255,255,255,.8);
+  box-shadow:0 1px 5px rgba(13,27,42,.28), inset 0 0 0 1px rgba(13,27,42,.07);
+  pointer-events:none;opacity:0;
+  transition:opacity var(--d-1) var(--e-standard);
+}
+.kp-phone.is-touched .kp-touch{opacity:1}
+.kp-phone.is-dark .kp-touch{background:rgba(255,255,255,.42)}
+
+/* --- controls answer when they are pressed --------------------------------
+   Every control inside the device now has the same two states: it lifts a
+   little under the pointer and drops under the press. One pair of numbers
+   across the whole product, so no two controls disagree about what a press
+   feels like — the same argument as the motion tokens on the site around it. */
+.kp-btn,
+.kp-set__row,
+.kp-person,
+.kp-day,
+.kp-chip,
+.kp-feat button,
+.kp-dash__c,
+.kp-tab,
+.kp-seg button,
+.kp-signin__btn,
+.kp-send,
+.kp-fab{
+  transition:transform var(--d-2) var(--e-out),
+             background var(--d-2) var(--e-standard),
+             box-shadow var(--d-2) var(--e-standard);
+}
+.kp-btn:active,
+.kp-signin__btn:active,
+.kp-send:active,
+.kp-fab:active{transform:scale(.955)}
+.kp-set__row:active,
+.kp-person:active,
+.kp-day:active,
+.kp-chip:active,
+.kp-feat button:active,
+.kp-dash__c:active,
+.kp-tab:active,
+.kp-seg button:active{transform:scale(.97)}
+/* the primary button is the only one that lifts: it is the one thing on the
+   screen you are meant to be looking for */
+.kp-btn:hover{transform:translateY(-1px)}
+.kp-btn:active{transform:scale(.955)}
+:root[data-motion="off"] .kp-btn,
+:root[data-motion="off"] .kp-set__row,
+:root[data-motion="off"] .kp-person,
+:root[data-motion="off"] .kp-day,
+:root[data-motion="off"] .kp-chip,
+:root[data-motion="off"] .kp-feat button,
+:root[data-motion="off"] .kp-dash__c,
+:root[data-motion="off"] .kp-tab,
+:root[data-motion="off"] .kp-seg button,
+:root[data-motion="off"] .kp-signin__btn,
+:root[data-motion="off"] .kp-send,
+:root[data-motion="off"] .kp-fab{transition:none;transform:none}
+
+/* --- back ----------------------------------------------------------------
+   Two of them, one rule. The four screens that draw their own arrow in the
+   top bar now have a real button around it; the other ten get the floating
+   one, which sits exactly where a drawn one would be so the control never
+   appears to move between screens. */
+.kp-back{
+  display:grid;place-items:center;
+  width:30px;height:30px;padding:0;border:0;border-radius:999px;
+  background:none;color:var(--kp-ink-2);
+  transition:background var(--d-2) var(--e-standard),
+             transform var(--d-2) var(--e-out);
+}
+.kp-back:hover{background:var(--kp-brand-tint);color:var(--kp-ink)}
+.kp-back:active{transform:scale(.92)}
+.kp-back--float{
+  position:absolute;left:10px;top:58px;z-index:12;
+  background:rgba(255,255,255,.86);
+  box-shadow:0 1px 4px rgba(13,27,42,.14);
+}
+.kp-back--float[hidden]{display:none}
+/* and the screen under it gets out of its way. It only shows on three
+   screens, so this only moves three screens — and it moves them rather than
+   letting the button sit on top of a word, which is the one thing a floating
+   control must never do. */
+.kp-phone.has-back .kp-screen{padding-top:52px}
+/* A 20%-white disc over a blue gradient is just a lighter blue, and the arrow
+   inside it is drawn in the product's blue-to-cyan — so the whole control was
+   blue on blue and effectively gone.
+
+   Solid white instead, which is also what the avatar on this screen is: the
+   one full-bleed screen already says "white circle on blue" once, and saying
+   it twice is a language rather than a patch. The arrow keeps its gradient,
+   which now has a white ground to sit on. */
+.kp-phone.is-dark .kp-back--float{
+  background:#fff;
+  box-shadow:0 2px 9px rgba(4,34,43,.3);
+}
+.kp-phone.is-dark .kp-back--float:hover{
+  background:#fff;
+  box-shadow:0 3px 12px rgba(4,34,43,.38);
+}
+:root[data-motion="off"] .kp-back{transition:none}
+
+/* --- room at the bottom, from Home on -------------------------------------
+   Home's content ran 13px past the screen. Thirteen pixels is worse than
+   none: there is something below the fold, but scrolling to it moves the page
+   so little that it reads as clipped rather than as scrollable — the last card
+   sits jammed against the edge and the screen looks cut off.
+
+   So every screen from Home onward ends with real room under its last item.
+   That does two things at once: the end of the content becomes visible as an
+   end, and the screens that do overflow get enough slack that the scroll and
+   its fade have something to say. The four run-in screens keep the padding
+   they had, because their layouts are measured against her frames. */
+.kp-phone.in-app .kp-screen{padding-bottom:34px}
+/* ...except the thread, which has no tab bar and whose composer IS the bottom
+   of the screen. 34px of clearance under it left it floating. */
+.kp-phone.in-app .kp-screen--chat{padding-bottom:0}
+
+/* --- the scrollbar --------------------------------------------------------
+   The screens have always scrolled with the native bar switched off, which is
+   right for a phone mock and wrong for one on a website: on a phone your
+   thumb tells you how long a screen is, and here nothing did.
+
+   So: a thumb whose LENGTH is the share of the screen you can see, on the
+   right edge, shown while it moves and for a moment after. It is drawn over
+   the screen rather than taking a column from it, so no layout moves when a
+   screen turns out to be scrollable. */
+/* It stays. A phone hides its scrollbar because your thumb is already telling
+   you where you are; here nothing is, so hiding it means the answer to "how
+   long is this screen" disappears a second after you stop asking. It is shown
+   whenever the screen has somewhere to scroll, and hidden only when it does
+   not — which is itself information. */
+.kp-scroll{
+  position:absolute;right:5px;top:8px;width:4px;
+  /* The colour is written per frame by scrollState(): the cyan-to-brand lerp,
+     placed by how far down you are. Opacity goes .4 -> .82 with it — at .4 a
+     flat blue was quiet enough, but the cyan end of the ramp on white
+     disappears at that, and a colour that is carrying a reading has to be the
+     colour it says it is. */
+  border-radius:999px;background:var(--kp-brand);
+  opacity:.82;z-index:14;
+  touch-action:none;
+  transition:opacity var(--d-1) var(--e-standard),
+             transform var(--d-1) var(--e-out);
+}
+/* The bar is 5px wide and a 5px target is not a target. The hit area reaches
+   9px past it on every side and is invisible — the thing you see stays thin,
+   the thing you can grab is a finger wide. */
+.kp-scroll::before{
+  content:"";position:absolute;inset:-9px -9px -9px -11px;
+}
+/* quiet until you go for it, then unmistakable */
+.kp-scroll:hover{opacity:1}
+.kp-phone.is-dragging .kp-scroll{opacity:1}
+.kp-phone.is-dragging{cursor:none}
+.kp-scroll[hidden]{display:none}
+.kp-phone.is-dark .kp-scroll{background:#fff;opacity:.5}
+.kp-phone.is-dark .kp-scroll:hover{opacity:.8}
+
+/* Research rationale: readable on narrow screens, details secondary. */
+.notes{grid-template-columns:repeat(auto-fit,minmax(min(100%,272px),1fr))}
+.rationale{align-items:start}
+/* Fold controls use the same drawn pen as the rest of Motion Lab. */
+.case-details{min-width:0;border:0;padding:4px 0}
+.case-details > summary{
+  display:flex;align-items:flex-start;gap:12px;min-height:48px;
+  /* No cursor here. This rule is (0,2,0) in a later file than site.css, so a
+     plain `cursor:pointer` silently beat the drawn --cur-tap that every other
+     control on the site gets, and this fold was the one thing you could press
+     that did not say so. The global rule already covers `summary`. */
+  padding:12px 4px;font-size:14px;font-weight:600;
+  line-height:24px;color:var(--ink);list-style:none;text-decoration:none;
+  border:0;box-shadow:none;background:none;
+}
+.case-details > summary::-webkit-details-marker{display:none}
+.case-details > summary::marker{content:""}
+.case-details > summary > span{min-width:0;text-decoration:none}
+.case-details__arrow{
+  display:block;flex:0 0 28px;width:28px;height:28px;margin-top:-2px;
+  fill:none;stroke:currentColor;stroke-width:var(--pen-w,2.8px);
+  stroke-linecap:round;stroke-linejoin:round;
+  transform:rotate(-7deg);transform-origin:center;
+  transition:transform var(--d-2) var(--e-out);
+}
+.case-details__arrow path{vector-effect:non-scaling-stroke}
+.case-details[open] > summary .case-details__arrow{transform:rotate(173deg)}
+:root[data-motion="off"] .case-details__arrow{transition:none}
+@media (prefers-reduced-motion:reduce){.case-details__arrow{transition:none}}
+.case-details summary:focus-visible{outline:2px solid var(--accent-line);outline-offset:3px;border-radius:4px}
+.case-details__body{padding:0 4px 20px;min-width:0}
+.case-details__body p{font-size:14px;line-height:1.65;color:var(--ink-2);margin:12px 0}
+.case-details .spec{overflow-wrap:anywhere}
+.case-details .swatches{flex-wrap:wrap}
+.persona-source{display:block;margin-bottom:8px;font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-2)}
+
+/* A small nudge on hover, a press, then a spring in the drawn arrow. */
+.case-details > summary{border-radius:var(--r-s);transition:background var(--d-2) var(--e-out)}
+.case-details > summary > span{
+  display:block;transform-origin:left center;
+  transition:transform var(--d-3) var(--e-spring);
+}
+.case-details__arrow{transition:transform var(--d-4) var(--e-spring)}
+.case-details[data-expanded="false"] > summary .case-details__arrow{transform:rotate(-7deg)}
+.case-details[data-expanded="true"] > summary .case-details__arrow{transform:rotate(173deg)}
+@media (hover:hover){
+  .case-details > summary:hover{background:var(--surface)}
+  .case-details > summary:hover > span{transform:translateX(3px) rotate(-.35deg)}
+  .case-details[data-expanded="false"] > summary:hover .case-details__arrow{transform:translateY(2px) rotate(3deg)}
+  .case-details[data-expanded="true"] > summary:hover .case-details__arrow{transform:translateY(-2px) rotate(181deg)}
+}
+.case-details > summary:active > span{transform:translateX(1px) scale(.985)}
+.case-details > summary:active .case-details__arrow{scale:.88}
+.case-details__arrow{transition:transform var(--d-4) var(--e-spring),scale var(--d-1) var(--e-out)}
+:root[data-motion="off"] .case-details > summary,
+:root[data-motion="off"] .case-details > summary > span,
+:root[data-motion="off"] .case-details__arrow{transition:none}
+:root[data-motion="off"] .case-details > summary > span{transform:none}
+:root[data-motion="off"] .case-details > summary .case-details__arrow{scale:1;transform:rotate(-7deg)}
+:root[data-motion="off"] .case-details[open] > summary .case-details__arrow{transform:rotate(173deg)}
+@media (prefers-reduced-motion:reduce){
+  .case-details > summary,.case-details > summary > span,.case-details__arrow{transition:none}
+  .case-details > summary > span{transform:none!important}
+  .case-details > summary .case-details__arrow{scale:1!important;transform:rotate(-7deg)!important}
+  .case-details[open] > summary .case-details__arrow{transform:rotate(173deg)!important}
+}

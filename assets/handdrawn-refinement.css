@@ -1,0 +1,456 @@
+/* Existing elements only: shared pen, spacing and stable drawn corners. */
+:root{
+  --pen-w:2.8px;
+  --pen-small:1.8px;
+  --drawn-control:12px 16px 13px 15px / 15px 12px 16px 13px;
+  --drawn-card:22px 27px 24px 20px / 25px 21px 27px 23px;
+  --drawn-pill:15px 19px 16px 18px / 18px 15px 19px 16px;
+  --pill-r-a:var(--drawn-pill);
+  --pill-r-b:var(--drawn-pill);
+  --pill-r-c:var(--drawn-pill);
+}
+
+/* Large drawn marks retain the same weight as the existing masked rules. */
+.doodle svg,.doodle__spark,.nav__rule path,.case-details__arrow{
+  stroke-width:var(--pen-w);stroke-linecap:round;stroke-linejoin:round;
+}
+.doodle svg path,.nav__rule path,.case-details__arrow path{
+  vector-effect:non-scaling-stroke;
+}
+/* Small interface symbols share an optically lighter version of that pen. */
+.iconbtn svg,.sheet__close svg,.bigcard .go svg,
+.flow__btn svg,.back svg,.iconwall svg,.goal svg,
+.kp .kp-ico:not(.kp-ico--dots){
+  stroke-width:var(--pen-small);stroke-linecap:round;stroke-linejoin:round;
+}
+:is(.iconbtn,.sheet__close,.bigcard .go,.flow__btn,.back,.iconwall,.goal) svg
+  :is(path,line,polyline,polygon,rect,circle),
+.kp .kp-ico:not(.kp-ico--dots) :is(path,line,polyline,polygon,rect,circle){
+  stroke-width:inherit;stroke-linecap:round;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+/* Reuse the existing double-drawn outlines with one shared compact pen. */
+.pen::before,.pen::after{border-width:var(--pen-small)}
+
+/* Let the existing surface colour and whitespace define content groups. */
+.tile,.card,.token,.bigcard,.page--doc .note,.page--doc .person,.page--doc .goal{
+  border:0;box-shadow:none;
+}
+.page--doc .facts,.page--doc .figs{border:0;box-shadow:none}
+.grid,.tokens{gap:clamp(16px,1.8vw,24px)}
+.notes,.people{gap:clamp(18px,2.1vw,28px)}
+.bento{gap:clamp(10px,1.2vw,16px)}
+.page .section__head{margin-bottom:clamp(16px,2vw,22px)}
+.page--flow .section__head{margin-bottom:clamp(12px,1.8vh,20px)}
+.deck .page .section + .section{margin-top:clamp(40px,5.5vh,64px)}
+.page--doc .note,.page--doc .person{padding:clamp(20px,2vw,28px)}
+.card__body{padding:6px clamp(20px,2vw,26px) clamp(20px,2vw,26px);gap:8px}
+.note p:first-of-type{margin-top:9px}
+.prose h3{margin-top:32px}
+.prose h3:first-child{margin-top:0}
+.prose h3 + p{margin-top:9px}
+@media (min-width:920px){
+  .page--doc.page--top .section{column-gap:clamp(32px,3.5vw,52px)}
+  .page--doc.page--top .section__head{border-right:0;margin:0;padding-right:8px}
+  .page--doc.page--top .section > * + *{margin-top:clamp(20px,2.6vh,28px)}
+}
+@media (max-width:640px){
+  .notes,.people,.grid,.tokens{gap:16px}
+  .page--doc .note,.page--doc .person{padding:20px}
+  .deck .page .section + .section{margin-top:40px}
+}
+@media (min-width:1000px) and (max-height:780px){
+  .grid,.tokens{gap:16px}
+  .page .section__head{margin-bottom:14px}
+}
+
+/* Three stable corner families. Circles, charts and device frames keep their geometry. */
+.tile,.card,.token,.bigcard,.page--doc .note,.page--doc .person,
+.sheet,.deck__mcell{border-radius:var(--drawn-card)}
+.page--doc .goal,.page--doc .facts div,.page--doc .figs div,
+.page--doc .iconwall,.iconwall figure,.sw i,
+.deck__close,.case-details > summary,.shade{border-radius:var(--drawn-control)}
+.btn,.d-btn,.deck__chip,.chip,.ramp__city,.flow__btn,.back,
+.page--flow .flow__step,.page--doc .person .pains span,
+.page--doc .section__head[data-kicker]::before,.page--cover .eyebrow{
+  border-radius:var(--drawn-pill);
+}
+/* Shape is fixed across interaction states; existing movement remains intact. */
+.btn,.d-btn,.deck__chip,.ramp__city{
+  transition:background var(--d-1) var(--e-standard),
+             color var(--d-1) var(--e-standard),
+             transform var(--d-3) var(--e-spring),
+             opacity var(--d-1) linear;
+}
+
+/* 4. Neutral reading surfaces; one accent for actionable/current states. */
+:root{
+  --ui-feedback:140ms;
+  --ui-move:220ms;
+  --ui-expand:420ms;
+  --ui-collapse:280ms;
+  --reading-surface:color-mix(in srgb,var(--surface) 65%,var(--bg));
+}
+.card,.token,.bigcard,.page--doc .note,.page--doc .person,
+.page--doc .goal,.page--doc .facts div,.page--doc .figs div,
+.page--doc .iconwall{background:var(--reading-surface,var(--surface))}
+.page--doc .section__head[data-kicker]::before{
+  background:var(--surface);color:var(--ink-2);
+}
+.page--doc .section__head h2::after{background:var(--ink)}
+.page--doc .prose b,.page--doc .note p b,.page--doc .note li b{
+  background:none;color:var(--ink);font-weight:600;
+}
+.page--doc .iconwall svg{stroke:var(--ink-2)}
+.page--doc .iconwall figure{background:none}
+.deck__chip[aria-current="true"]{
+  color:var(--accent-line);background:var(--accent-soft);
+}
+.deck__dot.on i{color:var(--accent-line)}
+
+/* --- the index cells carry no colour --------------------------------------
+   There were three hues in this one list: an orange outline on the page you
+   are on, a blue outline on the one under the pointer, and a blue numeral
+   inside the first. Three colours to say two things.
+
+   They say the same two things by weight instead. The cell you are on takes
+   an ink outline, the one under the pointer takes the mid grey, and the
+   numeral goes back to the --ink-3 every other cell's numeral already uses.
+   Darker means closer to you, which needs no legend. */
+/* .cur first: a cell can be both, and at equal weight the later rule wins,
+   so "here" has to be the one that lands last. */
+.deck__mcell.cur{border-color:var(--ink-3)}
+.deck__mcell.here{border-color:var(--ink)}
+.deck__mcell.here .n{color:var(--ink-3)}
+.page--flow .flow__step[aria-current="step"] .flow__t{color:var(--accent-line)}
+
+/* 5. Small controls respond; reading surfaces stay still. */
+.btn,.d-btn,.deck__chip,.ramp__city,.flow__btn,.deck__close,.back{
+  transition:background var(--ui-feedback) var(--e-out),
+             color var(--ui-feedback) var(--e-out),
+             transform var(--ui-move) var(--e-out);
+}
+.deck__chip:hover,.d-btn:hover,.btn:hover,.ramp__city:hover,
+.flow__btn:hover,.deck__close:hover,.back:hover{transform:translateY(-1px)}
+.deck__chip:active,.d-btn:active,.btn:active,.ramp__city:active,
+.flow__btn:active,.deck__close:active,.back:active{transform:scale(.98)}
+.deck__mcell:hover,.deck__mcell.cur{transform:none}
+.guide a:hover,:root[data-guide="side"] .guide a:hover{padding-left:3px}
+.tally__row:hover{padding-left:3px}
+.case-details > summary{
+  transition:background var(--ui-feedback) var(--e-out);
+}
+.case-details > summary > span{transition:transform var(--ui-move) var(--e-out)}
+.case-details > summary:hover > span{transform:translateX(2px)}
+.case-details > summary:active > span{transform:translateX(1px) scale(.985)}
+.case-details__arrow{
+  transition:transform var(--ui-expand) var(--e-spring),scale var(--ui-feedback) var(--e-out);
+}
+/* Keep existing doodles visible; stop their repeated disappearance while reading. */
+.doodle__line,.doodle__head,.doodle__spark{animation:none;stroke-dashoffset:0;opacity:1}
+.deck__stars i{animation:none;opacity:.65;transform:none}
+@media (hover:hover){
+  .card:hover,.token:hover{background:var(--tint)}
+}
+:root[data-motion="off"] :is(.btn,.d-btn,.deck__chip,.ramp__city,.flow__btn,.deck__close,.back),
+:root[data-motion="off"] .case-details > summary > span{transform:none}
+@media (prefers-reduced-motion:reduce){
+  :is(.btn,.d-btn,.deck__chip,.ramp__city,.flow__btn,.deck__close,.back),
+  .case-details > summary > span{transform:none!important}
+}
+
+/* 6. A consistent reading scale; emphasis comes from hierarchy, not layered decoration. */
+.page--doc .section__head h2{font-size:clamp(22px,2.2vw,28px);line-height:1.2}
+.page--doc .note h3,.page--doc .person h3{font-size:18px;line-height:1.35}
+.page--doc .prose p,.about > p{
+  font-size:16px;line-height:1.7;max-width:65ch;
+}
+.page--doc .note p,.page--doc .note ul,.page--doc .person p,
+.page--doc .person q,.case-details__body p{
+  font-size:14px;line-height:1.65;
+}
+.page--doc .section__head p{font-size:14px;line-height:1.6;margin-top:12px}
+.page--doc .note p + p,.page--doc .person p + p{margin-top:12px}
+.page--doc .note .src,.persona-source{line-height:1.5;letter-spacing:.06em}
+.page--doc .note li + li{margin-top:6px}
+.case-details__body{padding:2px 4px 22px}
+.case-details .spec{line-height:1.6}
+@media (max-width:640px){
+  .page--doc .prose p,.about > p{font-size:15px;line-height:1.7}
+  .page--doc .section__head p{max-width:100%}
+}
+
+/* ===========================================================================
+   7. The three marks, put back.
+
+   The six rules above are about NOISE, and the hand-drawn marks were never
+   noise — each one carries something. Three of them went out with the tidy,
+   and all three went out the same way: a one-line override, not a decision.
+
+   Rule 6 says "让每块内容只有一个重点". The marker does not break that rule,
+   it is how that rule was being kept: one marked sentence per block. What
+   broke it was bold AND colour AND marker at once. So the marker comes back
+   and the weight stays at the 600 set above, instead of going back to 700.
+   ======================================================================== */
+
+/* (a) The arrow on the intro page. Rule 5 correctly stopped it redrawing
+   itself every 6.4s while you are trying to read. But `animation:none` only
+   stops the motion — the path is still sitting at the animation's START
+   frame, because `.doodle svg path` sets stroke-dashoffset:1 at (0,1,1) and
+   the un-hide above is (0,1,0), so it loses. The arrow was not removed, it
+   was left drawn at zero length. This is the same specificity trap as the
+   calendar's margin: the fix is to out-specify, not to re-declare. */
+.doodle svg .doodle__line,
+.doodle svg .doodle__head,
+.doodle svg .doodle__spark{
+  stroke-dashoffset:1;
+  animation:doodleInk 1.5s var(--e-in-out) both;
+}
+.doodle svg .doodle__head{animation-delay:.55s}
+.doodle svg .doodle__spark{animation-delay:.85s}
+/* The pen goes in once and the ink stays. The original keyframe ran forever
+   and ended each cycle at opacity 0, which is the part rule 5 was right to
+   stop — a drawing that rubs itself out every 6.4s while you are reading the
+   sentence beside it. `both` holds the last frame, so nothing disappears. */
+@keyframes doodleInk{
+  from{stroke-dashoffset:1}
+  to{stroke-dashoffset:0}
+}
+:root[data-motion="off"] .doodle svg path{animation:none;stroke-dashoffset:0}
+@media (prefers-reduced-motion:reduce){
+  .doodle svg path{animation:none !important;stroke-dashoffset:0}
+}
+
+/* The caption starts a little further from the stroke (she: "you're here
+   往右一些"). Only the intro one — the small down-pointing version already
+   has its own 10px gap and sits beside a much smaller drawing. */
+.doodle:not(.doodle--down) .doodle__t{padding-left:16px}
+
+/* (b) The section's colour moves to the label, and the rule under the heading
+   steps back (she: "糖果色下划线做少一点，这个小标题的糖果色带回来").
+
+   That is the better place for it anyway: the label NAMES the section, so it
+   is the thing the colour is actually about, and a pill is a small area —
+   which is what rule 4 asks for twice over ("降低大面积背景色的存在感", "把强
+   调色集中到…"). One accent per section, on the one element that identifies
+   it, and the drawn rule goes back to being a drawn rule.
+
+   The label was originally --pd behind --bg type. That does not survive the
+   converged palette: --c5 came down to #dddf7b and page-coloured text on it
+   measures 1.4:1. Ink on the same ground measures 11:1, and stays readable on
+   the azure and the orange too, so the ground keeps the colour and the type
+   changes instead. */
+.page--doc .section__head[data-kicker]::before{
+  background:var(--pd, var(--surface));
+  color:var(--ink);
+}
+/* The rule keeps the 58x7 it has always been — shortening it to 34x5 was my
+   addition and it made the heading read as two marks, a stub and the border
+   under it, instead of one.
+
+   The colour goes back to --pd, the section's own candy. Rule 4 at line 100
+   sent it to --ink, which is the same call rule 4 made about the kicker pill,
+   and in both places it took the section's colour with it. The pill got its
+   colour back first; this is the other half of the same mark. --ink stays as
+   the fallback for any section that has no --pd of its own. */
+.page--doc .section__head h2::after{
+  background:var(--pd, var(--ink));
+}
+
+/* (c) The yellow marker under the one sentence that matters. It sits at 88%
+   of the line height — under the words, not behind them — so it reads as a
+   pen stroke rather than a highlight box, and --c5 has already come down to
+   #dddf7b with the rest of the palette, so it is softer than it was. */
+.page--doc .prose b,
+.page--doc .note p b,
+.page--doc .note li b{
+  background:linear-gradient(transparent 88%, var(--c5) 88%,
+                             var(--c5) 97%, transparent 97%);
+}
+
+/* (d) The goal numerals go light (she: "这里的数字做成浅色").
+
+   Straight white on --accent measures 2.81:1, and these are 9px numerals —
+   small text, where the floor is 4.5.
+
+   --accent-line looked like the answer (4.83 at the default) and is not: it
+   is walked to read against the PAGE, so dragging brightness down sends it
+   light and white on it falls to 1.04. --accent-deep is walked the other
+   way — darkened until white measures 4.5 on it — which is the guarantee a
+   disc with a light numeral actually needs. */
+.page--doc .goal::before{
+  background:var(--accent);
+  color:#fff;
+}
+
+/* --- and the pills tip again ----------------------------------------------
+   Rule 5 above gave every control the same translateY(-1px). That is the
+   right call for the chips and the flow buttons — they are navigation, and
+   navigation should be quiet. It is the wrong call for these four, which are
+   the last thing on the site you can press and were the one place the press
+   itself was drawn.
+
+   Scoped to .links so nothing else picks the tilt back up, and at (0,3,0) so
+   it clears rule 5's (0,2,0) rather than depending on which file loads last.
+   The angle comes from site.js and is re-rolled on each enter. */
+.links .btn{
+  transition:background var(--ui-feedback) var(--e-out),
+             color var(--ui-feedback) var(--e-out),
+             transform var(--ui-move) var(--e-spring);
+}
+.links .btn:hover,
+.links .btn:focus-visible{ transform:rotate(var(--pill-tip,-2.6deg)) }
+.links .btn:active{ transform:rotate(var(--pill-tip,-2.6deg)) scale(.965) }
+:root[data-motion="off"] .links .btn{transform:none}
+@media (prefers-reduced-motion:reduce){ .links .btn{transform:none!important} }
+
+/* --- the fold joins the pill family ---------------------------------------
+   It was its own format: no ground, no shape, and the only thing that moved
+   on hover was the label sliding 2px while the arrow beside it stayed put —
+   which reads as text nudging itself, not as a control being touched.
+
+   Now it behaves like every other pill: drawn corners, a ground that appears
+   under the pointer, the same 1px lift and the same 0.98 press. The negative
+   margin keeps the arrow on the text column, so taking the padding does not
+   push the row out of alignment with the prose above it. */
+.case-details > summary{
+  border-radius:var(--drawn-pill);
+  padding:12px 16px;
+  margin-left:-16px;
+  transition:background var(--ui-feedback) var(--e-out),
+             transform var(--ui-move) var(--e-out);
+}
+/* The ground is neutral and dark enough to see. Two grounds were wrong before
+   this one: --reading-surface sits 6/255 from the page, the same invisible
+   hover the cards have, and --accent-soft was visible but tinted, which put a
+   candy wash across the widest element on the page. --surface-3 is 37/255 off
+   the page with no hue in it at all, and theme.js already computes it, so it
+   follows the brightness and greyness sliders like everything else. */
+.case-details > summary:hover{
+  background:var(--tint);
+  transform:translateY(-1px);
+}
+.case-details > summary:active{transform:scale(.98)}
+/* the label no longer moves on its own — the whole control moves instead */
+.case-details > summary:hover > span,
+.case-details > summary:active > span{transform:none}
+:root[data-motion="off"] .case-details > summary{transform:none}
+
+/* Keep the full print study above the existing corner navigation. */
+@media(min-width:861px){
+  .study__art{height:min(52vw,calc(100dvh - 280px));width:auto;min-height:240px}
+}
+.study__read .case-details{margin-top:18px}
+
+/* One disclosure control for both card evidence and section details. */
+.page .case-details > summary{
+  display:flex;align-items:center;gap:10px;min-height:44px;
+  padding:8px 10px;margin-left:-10px;
+  font-family:var(--font);font-size:14px;font-weight:700;line-height:1.5;
+  color:var(--ink-2);background:transparent;border-radius:var(--drawn-control);
+  list-style:none;cursor:pointer;
+  transition:background var(--ui-feedback) var(--e-out);
+}
+.page .case-details > summary:hover{background:var(--surface-2);transform:none}
+.page .case-details > summary:active{transform:none}
+.page .case-details > summary .case-details__arrow{
+  width:22px;height:22px;flex:none;scale:1;
+}
+.page .case-details > summary:focus-visible{outline:2px solid var(--accent-line);outline-offset:3px}
+
+/* Decision cards: takeaway, interface schematic, response, full evidence. */
+.rationale .decision-card{align-self:start}
+.page--doc .decision-card .decision-takeaway{font-size:15px;line-height:1.55;color:var(--ink-2);margin-top:10px}
+.decision-example{margin:20px 0}
+.decision-ui{padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:14px;font-size:12px;line-height:1.5}
+.decision-ui__top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;margin-bottom:12px}
+.decision-ui__action,.decision-ui__state{color:var(--accent-line);background:var(--accent-soft);padding:4px 8px;border-radius:7px;font-size:11px}
+.decision-ui__row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line-soft)}
+.decision-ui__steps{display:flex;justify-content:space-between;gap:6px;margin-top:12px;color:var(--accent-line)}
+.decision-example figcaption{font-size:10px;line-height:1.5;color:var(--ink-2);margin-top:7px}
+.decision-ui__stats{display:flex;gap:20px;align-items:center}
+.decision-ui__arc{width:72px;height:72px;flex:none;border-radius:50%;background:conic-gradient(var(--accent-line) 40%,var(--line-soft) 0);display:grid;place-items:center}
+.decision-ui__arc span{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-weight:700}
+.decision-ui__counts{display:flex;justify-content:space-between;flex:1;gap:10px}
+.decision-ui__counts span{display:grid;gap:3px;font-size:11px}
+.decision-ui__counts strong{font-size:18px;color:var(--accent-line)}
+.decision-response{border-left:3px solid var(--accent-line);padding-left:12px}
+.page--doc .decision-response p:first-of-type{margin-top:0}
+.decision-evidence{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.decision-evidence summary{cursor:pointer;font-size:13px;font-weight:700;line-height:1.6;padding:5px 0;color:var(--ink-2)}
+.decision-evidence summary:focus-visible{outline:2px solid var(--accent-line);outline-offset:4px}
+
+/* Schematics share the phone's fixed product palette and typography. */
+.decision-ui{
+  --kp-bg:var(--bg);--kp-card:var(--bg);
+  font-family:var(--kp-font);font-size:var(--kp-fs-5);color:var(--kp-ink);
+  background:var(--kp-bg);border:var(--kp-bw-1) solid var(--kp-line);
+  border-radius:var(--kp-r-l);padding:18px;
+}
+.decision-ui__top{font-size:var(--kp-fs-8);font-weight:600;letter-spacing:-.03em}
+.decision-ui__action{background:var(--kp-grad);color:#fff;border-radius:var(--kp-r-m);font-weight:600;letter-spacing:0}
+.decision-ui__state{background:var(--kp-brand-tint);color:var(--kp-brand);border-radius:var(--kp-r-s)}
+.decision-ui__row{border-color:var(--kp-line-2);color:var(--kp-ink-2)}
+.decision-ui__row strong{color:var(--kp-ink);font-weight:600}
+.decision-ui__steps{color:var(--kp-brand);font-weight:600}
+.decision-ui__stats{align-items:stretch;gap:9px}
+.decision-ui__stats .kp-wstat__card{border:1px solid var(--kp-line);border-radius:var(--kp-r-l);background:var(--kp-card)}
+.decision-ui__stats .kp-bigring{margin:auto}
+.decision-ui__stats .kp-bigring .fg{stroke:url(#decision-progress-gradient)}
+
+/* Explicit text navigation within the existing corner layout. */
+.deck__index-label{font-family:var(--font);font-size:12px;font-weight:700;color:var(--ink-2)}
+.deck__paging{display:flex;gap:12px;align-items:center;flex:none}
+.deck__paging button{font-family:var(--font);font-size:12px;padding:4px 0;color:var(--ink-2);line-height:14px}
+.deck__paging button:hover{text-decoration:underline;text-underline-offset:4px}
+.deck__paging button:disabled{opacity:.35;cursor:default;text-decoration:none}
+.deck__paging button:focus-visible{outline:2px solid var(--accent-line);outline-offset:4px}
+.deck__bar .deck__keys{display:none}
+.page--flow .flow__keys{display:block;white-space:normal;max-width:28ch;line-height:1.45}
+@media(max-width:640px){
+  .deck__bar{gap:8px;flex-wrap:wrap}
+  .deck__paging{gap:12px;margin-left:auto}
+  .deck__paging button{padding:8px 0}
+  .deck__read{gap:6px}
+}
+
+/* Shared editorial hierarchy. Product UI keeps its own type scale. */
+:root{
+  --title-cover:clamp(36px,4vw,56px);
+  --title-section:clamp(22px,2.2vw,28px);
+  --title-card:18px;
+}
+.page .hero h1,.page .phero h1,.page.page--intro h1{
+  font-size:var(--title-cover);
+  font-weight:var(--display-weight,900);
+  line-height:1.1;
+  letter-spacing:var(--display-track,-.018em);
+  text-transform:none;
+  margin-top:18px;
+}
+.page .section__head h2,.sheet .sheet__t{
+  font-size:var(--title-section);
+  font-weight:var(--display-weight,900);
+  line-height:1.2;
+  letter-spacing:var(--display-track,-.018em);
+  text-transform:none;
+}
+.page .section__head h2{
+  padding-bottom:10px;
+  border-bottom:1px solid var(--line);
+}
+.page .section__head h2::after{
+  width:58px;
+  height:7px;
+  bottom:-3px;
+}
+.page .section__head p{margin-top:12px}
+.page .card__t,.page .bigcard h3,
+.page .note h3,.page .person h3,.page .prose h3{
+  font-family:var(--font-display,var(--font));
+  font-size:var(--title-card);
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:-.012em;
+  text-transform:none;
+}

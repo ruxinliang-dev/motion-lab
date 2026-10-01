@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ruxin Liang — Motion Lab</title>
+<meta name="description" content="A visual system drawn from formulas, eight interaction studies, and KeePlan: thirteen screens you can walk through. Everything is drawn in code and runs live in the browser.">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<!-- the KeePlan wordmark only: identified by tracing her own artwork and
+     comparing shapes against fifteen candidates (Montserrat 800 at -.02em,
+     IoU .854; Inter Tight 800 was .853, and the genre decided it) -->
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap">
+<link rel="stylesheet" href="assets/site.css?v=227">
+<link rel="stylesheet" href="assets/labs.css?v=197">
+<link rel="stylesheet" href="assets/keeplan.css?v=212">
+<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=24">
+<script src="assets/theme.js?v=199"></script>
+<script src="assets/type.js?v=197"></script>
+</head>
+<body>
+
+<a class="skip" href="#/system">Skip to the work</a>
+
+<header class="nav">
+  <div class="nav__in wrap">
+    <a class="nav__name" href="#/intro">Ruxin Liang <span>/ Motion Lab</span></a>
+    <button class="iconbtn" id="motion" type="button" aria-pressed="false"
+            title="Reduce motion" aria-label="Reduce motion">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 12h4l3-7 4 14 3-7h4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="deck" id="deck">
+  <div class="deck__canvas">
+
+    <!-- intro ---------------------------------------------------------- -->
+    <section class="chapter" data-chapter="intro">
+      <article class="page page--intro">
+        <div class="wrap hero">
+          <span class="eyebrow">Visual system · Interaction studies</span>
+          <h1>Motion and artwork, <em>from the same math.</em></h1>
+          <p class="lead">
+            No image files. Every tile is a formula, every screen is built while
+            you watch. Five chapters, thirteen pages.
+          </p>
+
+          <nav class="guide" aria-label="What each chapter studies">
+            <a href="#/system"><b>System</b><span>Six tiles, six equations, and the
+              durations everything else obeys.</span></a>
+            <a href="#/experiments"><b>Experiments</b><span>Eight studies, each one
+              arguing about a single number.</span></a>
+            <a href="#/project"><b>Project</b><span>KeePlan: research, design decisions and a live product prototype.</span></a>
+            <a href="#/about"><b>About</b><span>Who is doing this, and how.</span></a>
+          </nav>
+
+          <div class="doodle">
+            <!-- Redrawn over her own red mark on the screenshot: it enters
+                 high on the right, sweeps left, ties the loop, then drops
+                 almost vertically and the head points STRAIGHT DOWN at the
+                 marks rather than sideways at them. The box went from 250x118
+                 to 230x215, which is the whole point: the old one was a flat
+                 flick, and what it had to say was "down there". -->
+            <svg class="doodle__down" viewBox="0 0 230 215" aria-hidden="true">
+              <path class="doodle__line" pathLength="1"
+                    d="M222 14C186 3 146 11 120 35
+                       95 57 88 95 108 101
+                       128 107 138 73 116 61
+                       98 51 76 67 64 93
+                       50 125 42 165 38 194"/>
+              <!-- smaller: the head is the full stop, not the sentence -->
+              <path class="doodle__head" pathLength="1" d="M26 181 38 200 51 182"/>
+              <path class="doodle__spark" pathLength="1"
+                    d="M168 46v11M163 51h11M192 74l5 5M197 74l-5 5"/>
+            </svg>
+            <!-- Drawn from her sketch on the screenshot: out of the right edge
+                 of the caption, a dip, one small loop, and up into the mark.
+                 Sideways, because the matrix is now level with the text
+                 rather than below it. The box is cut so the head's tip is the
+                 right edge, which lets the CSS put the tip on the matrix with
+                 one number. -->
+            <svg class="doodle__across" viewBox="0 0 220 60" aria-hidden="true">
+              <path class="doodle__line" pathLength="1"
+                    d="M2 30C30 40 62 50 100 46
+                       124 44 128 26 114 26
+                       100 26 102 46 124 48
+                       158 51 190 44 218 31"/>
+              <path class="doodle__head" pathLength="1" d="M202 28 218 31 209 44"/>
+            </svg>
+            <p class="doodle__t">
+              <b>you are here.</b>
+              Right and left change chapter, up and down turn the page.
+              <i>index</i> opens all thirteen at once.
+            </p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- system --------------------------------------------------------- -->
+    <section class="chapter" data-chapter="system">
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Visual system</h2>
+            <p>
+              Six tiles, six equations. Colour is interpolated in linear light,
+              so a ramp keeps its weight through the middle instead of going
+              grey. Hover a tile to read its equation.
+            </p>
+          </div>
+          <div class="bento" id="bento"></div>
+        </div>
+      </article>
+      <article class="page page--top">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Motion tokens</h2>
+            <p>
+              Four curves and five durations. Everything on this site picks from
+              this list, so two screens can never disagree about what fast
+              means. Hover a card to replay it, or press the first one.
+            </p>
+          </div>
+          <div class="tokens" id="tokens">
+            <div class="token token--stage" data-art="pulse">
+              <span class="token__name token__name--over">pulse</span>
+              <span class="token__use token__use--over">press it</span>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>A shape that keeps what you did to it</h2>
+            <p>
+              Move to shape. Leave to keep.
+            </p>
+          </div>
+          <div class="study">
+            <div class="study__art" data-art="lame" aria-label="Five nested shapes the pointer reshapes"></div>
+            <div class="study__read">
+              <p class="study__intro">One shape, five echoes. Find a composition worth keeping.</p>
+              <p><b>Left / right</b> changes the silhouette.<br><b>Up / down</b> adjusts the spacing.</p>
+              <p>Leave to pause. Double-click to reset.</p>
+              <details class="case-details"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>How it works</span></summary><div class="case-details__body">
+              <p>
+                All five rings are one equation. The exponent <b>n</b> is the only
+                thing that decides what kind of shape it draws: at n&nbsp;=&nbsp;1 a
+                diamond, at n&nbsp;=&nbsp;2 an ellipse, and by n&nbsp;=&nbsp;8 a
+                rectangle with the corners still soft. Everything else in the family
+                lives between those.
+              </p>
+              <p>
+                Left to right writes n. Up and down writes <b>p</b>, which spaces the
+                rings at (i/R)^p, so they either crowd against the outside or open out
+                toward the middle.
+              </p>
+              <p>
+                Those two numbers define the shape. Pointer movement adjusts them relative to the last position, so returning does not cause a jump. <b>Leaving freezes the current shape</b>. Double-click resets the composition.
+              </p>
+              <span class="study__math"></span></div></details>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- experiments ---------------------------------------------------- -->
+    <section class="chapter" data-chapter="experiments">
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Experiments, one to four</h2>
+            <p>Live and interactive. Play with them here, or open one for the notes.</p>
+          </div>
+          <div class="grid" data-labs="0-3">
+            <noscript>
+              <p style="color:var(--ink-2)">
+                The tiles and the experiments are drawn with JavaScript, so this
+                page needs it on.
+              </p>
+            </noscript>
+          </div>
+        </div>
+      </article>
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Experiments, five to eight</h2>
+            <p>Drag the toasts and the sheet. The last one keeps whatever you do to it.</p>
+          </div>
+          <div class="grid" data-labs="4-7"></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- project: KeePlan, cover first ---------------------------------- -->
+    <section class="chapter" data-chapter="project">
+      <article class="page page--cover page--doc">
+        <div class="wrap">
+        <section class="phero">
+          <span class="eyebrow">Human-centered project · KeePlan</span>
+          <h1>Designing for the <em>Human.</em></h1>
+          <p>
+            KeePlan helps people who know what they should be doing and cannot start.
+            Three rounds of interviews and surveys, an empathy map, an affinity
+            diagram, three research personas and thirteen screens. Walk the flow below in the
+            order a new user meets it, then read where each decision came from.
+            Nothing on this page is a picture of an interface.
+          </p>
+          <dl class="facts">
+            <div><dt>Screens</dt><dd>13, in flow order</dd></div>
+            <div><dt>Research</dt><dd>3 rounds; 6 initial interviewees</dd></div>
+            <div><dt>Icons</dt><dd><span id="iconcount">35</span>, drawn in code</dd></div>
+            <div><dt>Images</dt><dd>None</dd></div>
+            <div><dt>Palette</dt><dd>Blue to cyan</dd></div>
+          </dl>
+          <div class="doodle doodle--down">
+            <svg viewBox="0 0 120 92" aria-hidden="true">
+              <path class="doodle__line" pathLength="1"
+                    d="M6 8C30 4 62 14 74 36 82 51 82 68 79 86"/>
+              <path class="doodle__head" pathLength="1" d="M68 70 79 87 90 71"/>
+            </svg>
+            <p class="doodle__t">
+              <b>Thirteen screens, one page down.</b>
+              The research each one came out of is under that.
+            </p>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--flow page--doc">
+        <div class="wrap">
+        <section class="section" id="flow" data-accent="azure">
+          <div class="section__head" data-kicker="Hi-fi prototype">
+            <h2>The flow</h2>
+            <p>
+              Pick a step, or use Next. The screens are live: check a topic, create a
+              task, join an event, hide a profile field.
+            </p>
+          </div>
+          <div class="kp" id="kp"></div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc">
+        <div class="wrap">
+        <section class="section" id="question" data-accent="yellow">
+          <div class="section__head" data-kicker="Needfinding">
+            <h2>The design question</h2>
+            <p>Needfinding began with observation, and two words: plan and task.</p>
+          </div>
+        
+          <div class="prose">
+            <p>
+              The project began with young people who wanted to explore new interests but felt
+              held back by family expectations and employment pressure. What makes <b>taking the first step</b> feel difficult?
+            </p>
+            <p>
+              I interviewed six people using open-ended questions about plans and tasks.
+              I recorded their responses and organised the answers in Google Forms
+              to understand their needs before proposing a solution.
+            </p>
+        
+            <h3>The conflict point</h3>
+            <p>
+              Interviewees valued planning but struggled to begin. <b>Fear of leaving a task unfinished</b> could make them feel frustrated before they started.
+            </p>
+        
+            <h3>The problem</h3>
+            <p>
+              Participants described pressure from family, friends and their wider environment.
+              These pressures accumulated and made it harder to feel motivated.
+            </p>
+            <p>
+              Some connected this loss of confidence to repeated setbacks. They wanted a way
+              to regain confidence and try again.
+            </p>
+          </div>
+        
+          <div class="notes" style="margin-top:34px">
+            <div class="note">
+              <span class="src">Empathy map · what they think</span>
+              <h3>The load is already inside</h3>
+              <ul>
+                <li>Confused about what to do when they wake up every day</li>
+                <li>Too much content in their head, and no way to arrange it</li>
+                <li>One thing left unfinished drains the motivation for everything else</li>
+                <li>Anxious about the future of their life</li>
+              </ul>
+            </div>
+            <div class="note">
+              <span class="src">Empathy map · what they see and hear</span>
+              <h3>And the comparison is constant</h3>
+              <ul>
+                <li>The people around them know when to do things</li>
+                <li>A supervisor or professor asking for a task as soon as possible</li>
+                <li>Friends posting travel photos, with hobbies and full days</li>
+                <li>Family encouraging them to improve their living conditions</li>
+              </ul>
+            </div>
+            <div class="note">
+              <span class="src">Empathy map · analysis</span>
+              <h3>What that adds up to</h3>
+              <p>
+              The empathy map linked pressure to high expectations, comparison and little room
+              for mistakes. Seeing other people appear successful could make participants
+              feel further behind.
+            </p>
+              <p>
+              This suggested a direction: help people explore an interest <b>beyond the immediate setback</b>, at a pace they can choose.
+            </p>
+            </div>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc">
+        <div class="wrap">
+        <section class="section" id="research" data-accent="azure">
+          <div class="section__head" data-kicker="Interviews and surveys">
+            <h2>What the research found</h2>
+            <p>
+              Two follow-up rounds used Google Forms and SurveyMonkey. Six people took
+              part in the initial interviews; the later rounds also included new participants.
+            </p>
+          </div>
+        
+          <div class="figs">
+            <div><b>65%</b><span>of respondents were women</span></div>
+            <div><b>18–35</b><span>undergraduates and graduates</span></div>
+            <div><b>~0</b><span>reported no anxiety at all</span></div>
+            <div><b>half</b><span>described theirs as severe</span></div>
+            <div><b>6</b><span>initial interviewees</span></div>
+          </div>
+        
+          <div class="notes" style="margin-top:20px">
+            <div class="note">
+              <span class="src">Sources of stress</span>
+              <h3>Five named causes</h3>
+              <ul>
+                <li>Peer competitiveness</li>
+                <li>Employment pressure</li>
+                <li>Financial situation</li>
+                <li>Satisfaction with results</li>
+                <li>Family pressure</li>
+              </ul>
+              <p>
+              Participants described work as more uncertain than study. Alongside practical
+              concerns, <b>their own and other people's expectations</b> added pressure.
+            </p>
+            </div>
+        
+            <div class="note">
+              <span class="src">De-stressing</span>
+              <h3>How participants take a break</h3>
+              <p>
+              Participants most often described talking with close family and friends, followed
+              by activities they enjoyed, such as music, games and sport.
+            </p>
+              <p>
+              Travel and counselling felt less accessible in their routines. They described
+              <b>fresh experiences</b>, from a new place to a gift or fresh air, as refreshing.
+            </p>
+            </div>
+        
+            <div class="note">
+              <span class="src">Visual tendency</span>
+              <h3>What they want to look at</h3>
+              <p>
+              Participants preferred sharing interests over personal details. An avatar and a few
+              interests felt sufficient to begin a conversation.
+            </p>
+              <p>
+              They wanted simple interfaces that took little effort to learn, with a
+              <b>bright environment</b> and a preference for light green and white.
+            </p>
+            </div>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc">
+        <div class="wrap">
+        <section class="section" id="decision" data-accent="orange">
+          <div class="section__head" data-kicker="Point of view">
+            <h2>The decision the project turned on</h2>
+            <p>Point of view, and the solution I did not build.</p>
+          </div>
+        
+          <div class="prose">
+            <p>
+              The research informed a scenario: <b>a 26-year-old between jobs</b> after an internship, facing financial pressure and family expectations.
+            </p>
+            <p>
+              A job-finding app was one possible response. I chose to explore a broader need
+              raised in the interviews: finding space to recover and try something new.
+            </p>
+            <p>
+              Finding work might address an immediate concern, but the interviews also pointed
+              to emotional pressure and uncertainty. <b>A job alone</b> would not necessarily resolve the other pressures in this scenario.
+            </p>
+            <p>
+              I focused on everyday opportunities to explore interests and connect with others.
+              This gave the project a manageable scope without promising to solve every
+              source of pressure.
+            </p>
+            <p>
+              The question became: how might we help people <b>regain their interest in daily life</b>?
+              KeePlan brings task lists and reminders together with interest-based events.
+              Local discovery by zip code remains part of the proposed concept.
+            </p>
+          </div>
+        </section>
+        
+        <section class="section" id="goals" data-accent="yellow">
+          <div class="section__head" data-kicker="Design goals">
+            <h2>Design goals</h2>
+            <p>Relieve stress and plan. Seven goals, straight out of the brief.</p>
+          </div>
+        
+          <div class="goals">
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Help users get a safe and friendly social experience</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Provide a space that helps with planning</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Create a platform for developing interest activities</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Provide a space that is private, safe and comfortable</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Create a platform for trying new things</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Help users reduce stress by engaging in activities</span>
+            </div>
+            <div class="goal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.6 10 17.6 19 6.8"/></svg>
+              <span>Provide a calendar with reminders for events</span>
+            </div>
+          </div>
+        
+          <div class="notes" style="margin-top:20px">
+            <div class="note">
+              <span class="src">Keys</span>
+              <h3>How privacy is meant to work</h3>
+              <p>
+                Users are authenticated when they register, and after that everything
+                another user can see is under their control. Apart from an avatar and
+                a personal description, every field can be hidden. The design intent is that joining an event does not automatically reveal
+                additional personal details; the live demo illustrates the visibility controls.
+              </p>
+              <p>
+                People who want to try socialising can meet others with the same
+                hobbies through events. People who do not want the added pressure can
+                still take new information from the feed. The platform builds social relationships indirectly and gives people <b>the right to choose</b>.
+              </p>
+            </div>
+            <div class="note">
+              <span class="src">Design priorities · Maslow</span>
+              <h3>Where it sits</h3>
+              <svg class="pd-fig" viewBox="0 0 260 150" role="img"
+                   aria-label="Maslow's hierarchy with self-actualization and belonging marked">
+                <polygon points="72,8 82.5,32.6 61.5,32.6" fill="var(--c1)"/>
+                <polygon points="60.6,34.8 83.4,34.8 93.8,59.5 50.2,59.5" fill="var(--c1)" opacity=".30"/>
+                <polygon points="49.2,61.7 94.8,61.7 105.2,86.3 38.8,86.3" fill="var(--c1)" opacity=".74"/>
+                <polygon points="37.8,88.5 106.2,88.5 116.6,113.2 27.4,113.2" fill="var(--c1)" opacity=".18"/>
+                <polygon points="26.5,115.4 117.5,115.4 128.0,140.0 16.0,140.0" fill="var(--c1)" opacity=".10"/>
+                <g class="pd-fig__tick">
+                  <line x1="82.2" y1="20.3" x2="136" y2="20.3"/>
+                  <line x1="93.6" y1="47.2" x2="136" y2="47.2"/>
+                  <line x1="105.0" y1="74.0" x2="136" y2="74.0"/>
+                  <line x1="116.4" y1="100.8" x2="136" y2="100.8"/>
+                  <line x1="127.8" y1="127.7" x2="136" y2="127.7"/>
+                </g>
+                <text x="142" y="20.3" dy=".34em">Self-actualization</text>
+                <text x="142" y="47.2" dy=".34em" class="pd-fig__off">Esteem</text>
+                <text x="142" y="74.0" dy=".34em">Love and belonging</text>
+                <text x="142" y="100.8" dy=".34em" class="pd-fig__off">Safety</text>
+                <text x="142" y="127.7" dy=".34em" class="pd-fig__off">Physiological</text>
+              </svg>
+              <p>
+                <b>Self-actualization.</b> To provide a place where people can express
+                their creativity, satisfy their desire to explore new things, and
+                release their accumulated stress.
+              </p>
+              <p>
+                <b>Love and belonging.</b> To help people make friends with others who
+                share the same preferences, gently, on a social platform.
+              </p>
+            </div>
+            <div class="note">
+              <span class="src">Target group</span>
+              <h3>Who it is for</h3>
+              <svg class="pd-fig" viewBox="0 0 260 150" role="img"
+                   aria-label="Main audience at the centre, secondary audience around it">
+                <circle cx="130" cy="75" r="66" fill="var(--c1)" opacity=".12"/>
+                <circle cx="130" cy="75" r="43" fill="var(--c1)" opacity=".26"/>
+                <circle cx="130" cy="75" r="23" fill="var(--c1)"/>
+                <text x="130" y="20.5" dy=".34em" text-anchor="middle" class="pd-fig__off">Parents</text>
+                <text x="130" y="42" dy=".34em" text-anchor="middle">Workers</text>
+                <text x="130" y="69.5" dy=".34em" text-anchor="middle" class="pd-fig__in">Students</text>
+                <text x="130" y="80.5" dy=".34em" text-anchor="middle" class="pd-fig__in">Jobless</text>
+                <text x="130" y="108" dy=".34em" text-anchor="middle">Travellers</text>
+                <text x="130" y="129.5" dy=".34em" text-anchor="middle" class="pd-fig__off">Fitness, family</text>
+              </svg>
+              <p><b>Main audience.</b> Young people, students, people between jobs,
+                workers and travellers. These are the people the program is for and
+                they have the largest effect on it.</p>
+              <p><b>Secondary.</b> Parents, families, fitness people. They affect the
+                project, less so.</p>
+            </div>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc">
+        <div class="wrap">
+        <section class="section" id="people" data-accent="yellow">
+          <div class="section__head" data-kicker="Personas">
+            <h2>Personas</h2>
+            <p>Six. Three from the interview rounds, three written to cover cases
+              those rounds did not reach.</p>
+          </div>
+        
+          <div class="people">
+            <div class="person">
+              <span class="persona-source">Research persona</span>
+              <h3>Hailey</h3>
+              <div class="meta">25 · Graduate student · United States · IT</div>
+              <q>I hope to communicate with more students who share the same hobby or
+                course.</q>
+              <p>
+                Just started graduate school. The epidemic stopped her talking to
+                classmates face to face, which left her lonely and helpless in her
+                studies and her life.
+              </p>
+              <div class="pains">
+                <span>Limited offline courses</span><span>Academic anxiety</span>
+                <span>Lack of social opportunity</span><span>Unfamiliar surroundings</span>
+                <span>Missing family</span>
+              </div>
+            </div>
+        
+            <div class="person">
+              <span class="persona-source">Research persona</span>
+              <h3>Greyson</h3>
+              <div class="meta">28 · Between jobs · United Kingdom · Finance</div>
+              <q>I did not know how to release the stress of looking for a job, and I
+                did not want to work in the wrong place.</q>
+              <p>
+                Six months out of graduate school and a month past the end of an
+                internship. Anxious about finding work, short on good opportunities,
+                disappointed and on edge about it.
+              </p>
+              <div class="pains">
+                <span>Cannot sleep with anxiety</span><span>Low efficacy</span>
+                <span>Financial pressure from family</span>
+                <span>Nobody in the same situation to talk to</span>
+              </div>
+            </div>
+        
+            <div class="person">
+              <span class="persona-source">Research persona</span>
+              <h3>Madeline</h3>
+              <div class="meta">30 · UX designer · United States · Psychology</div>
+              <q>I wanted to find more excitement for my life, and now I feel bored
+                and calm most of the time.</q>
+              <p>
+                Bored by a routine without surprises. She enjoys trips, and travelling
+                creates its own stress because of her job and her dog, starting with
+                where to leave him safely.
+              </p>
+              <div class="pains">
+                <span>Repetitive work</span><span>Being confined</span>
+                <span>The same old life</span><span>Distant from family</span>
+                <span>Spending too much money</span>
+              </div>
+            </div>
+
+            <div class="person">
+              <span class="persona-source">Hypothetical extension</span>
+              <h3>Devon</h3>
+              <div class="meta">24 &middot; Night-shift nurse &middot; Canada &middot; Nursing</div>
+              <q>Everyone I know is asleep when I am free. My weekend is a Tuesday.</q>
+              <p>
+                Works rotating nights. On paper he has both the time and the energy,
+                just never at the hours anything is happening, so plans get made and
+                then quietly dropped.
+              </p>
+              <div class="pains">
+                <span>Opposite schedule</span><span>Plans fall through</span>
+                <span>No weekday company</span><span>Sleep debt</span>
+                <span>Lives alone</span>
+              </div>
+            </div>
+
+            <div class="person">
+              <span class="persona-source">Hypothetical extension</span>
+              <h3>Marisol</h3>
+              <div class="meta">31 &middot; Remote developer &middot; Spain &middot; Software</div>
+              <q>I have not left the flat in three days and technically nothing is
+                wrong.</q>
+              <p>
+                Moved cities for a remote job and never found a reason to go outside.
+                She knows exactly what she should be doing; the list is long and none
+                of it has been started.
+              </p>
+              <div class="pains">
+                <span>Works from bed</span><span>Empty calendar</span>
+                <span>New city, no one in it</span><span>Weekends blur</span>
+                <span>Starts nothing</span>
+              </div>
+            </div>
+
+            <div class="person">
+              <span class="persona-source">Hypothetical extension</span>
+              <h3>Theo</h3>
+              <div class="meta">22 &middot; Final-year student &middot; Australia &middot; Architecture</div>
+              <q>I plan the whole week on Sunday and abandon it by Tuesday.</q>
+              <p>
+                Builds elaborate schedules and cannot keep one. He wants something
+                that survives a bad day rather than a system that has to be started
+                over every time he misses it.
+              </p>
+              <div class="pains">
+                <span>Restarts every week</span><span>All or nothing</span>
+                <span>Deadline panic</span><span>Guilt about resting</span>
+                <span>App fatigue</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc">
+        <div class="wrap">
+        <section class="section" id="design" data-accent="orange">
+          <div class="section__head" data-kicker="Design rationale">
+            <h2>Design decisions</h2>
+            <p>Make the first step feel possible, then let people choose how far to go.</p>
+          </div>
+          <div class="prose">
+            <p>The interviews exposed a contradiction: people valued planning, yet feared
+              failing at the plans they made. The affinity work also connected that pressure
+              to comparison, isolation and repetitive routines. I chose to bring
+              small plans, shared interests and control over personal information
+              into <b>one product</b>. Each serves a different part of the same starting problem.</p>
+          </div>
+          <div class="notes rationale">
+            <div class="note decision-card">
+              <span class="src">01 · Interviews &amp; empathy map</span>
+              <h3>Keep the next action close</h3>
+              <p class="decision-takeaway">Put one manageable next step within reach.</p><figure class="decision-example"><div class="decision-ui"><div class="decision-ui__top">Home <span class="decision-ui__action">+ Add task</span></div><div class="decision-ui__row"><span>Current task</span><span class="decision-ui__check">○</span></div><div class="decision-ui__row"><span>Reminder</span><span>Today</span></div></div><figcaption>Interface schematic · simplified from the prototype</figcaption></figure><div class="decision-response"><p><b>Design response.</b> The Home screen puts current tasks beside reminders,
+                with a persistent add action. Calendar and Reminder provide another way
+                back to a plan, so remembering it does not depend on holding it in mind.</p></div><details class="case-details decision-evidence"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Research &amp; trade-offs</span></summary><div class="case-details__body"><p><b>What I heard.</b> People wanted a quick way to record things, while an
+                unfinished task could drain their motivation for everything else.</p><p><b>Trade-off.</b> A planner can become another source of obligation.
+                The next test should check whether someone can add one manageable task
+                without feeling they must organise their whole week.</p></div></details></div>
+            <div class="note decision-card">
+              <span class="src">02 · De-stressing &amp; affinity analysis</span>
+              <h3>Let an interest start the conversation</h3>
+              <p class="decision-takeaway">Start with a shared activity, then let a conversation follow.</p><figure class="decision-example"><div class="decision-ui"><div class="decision-ui__top">Events</div><div class="decision-ui__row"><strong>Shared activity</strong><span>Interest first</span></div><div class="decision-ui__steps"><span>Browse</span><span aria-hidden="true">→</span><span>Join</span><span aria-hidden="true">→</span><span>Message</span></div></div><figcaption>Interface schematic · simplified from the prototype</figcaption></figure><div class="decision-response"><p><b>Design response.</b> Events centres the activity before the person.
+                Someone can browse, express interest or join; messages then provide
+                a place to coordinate with another person.</p></div><details class="case-details decision-evidence"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Research &amp; trade-offs</span></summary><div class="case-details__body"><p><b>What I heard.</b> Participants described familiar people, enjoyable
+                activities and fresh experiences as ways they took a break from pressure.</p><p><b>Trade-off.</b> More invitations can add social pressure. Activity intensity
+                labels are a design hypothesis for making the choice easier on a low-energy
+                day; their usefulness still needs testing.</p></div></details></div>
+            <div class="note decision-card">
+              <span class="src">03 · Privacy preferences &amp; design goals</span>
+              <h3>Make disclosure a choice</h3>
+              <p class="decision-takeaway">Let people participate without disclosing every personal detail.</p><figure class="decision-example"><div class="decision-ui"><div class="decision-ui__top">Edit Profile</div><div class="decision-ui__row"><span>Interests</span><span class="decision-ui__state">Visible</span></div><div class="decision-ui__row"><span>Personal field</span><span class="decision-ui__state">Hidden</span></div></div><figcaption>Interface schematic · simplified from the prototype</figcaption></figure><div class="decision-response"><p><b>Design response.</b> Edit Profile gives each personal field a visibility
+                control. Joining an activity and deciding what to disclose are separate
+                choices in the proposed experience.</p></div><details class="case-details decision-evidence"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Research &amp; trade-offs</span></summary><div class="case-details__body"><p><b>What I heard.</b> People preferred sharing interests to exposing personal
+                details. The research treated privacy as part of feeling comfortable enough
+                to participate.</p><p><b>Trade-off.</b> A visibility icon can be misunderstood. The prototype
+                demonstrates the controls; a usability test should ask people to explain
+                what another participant could see. Server-side privacy enforcement is
+                outside this interface demo.</p></div></details></div>
+            <div class="note decision-card">
+              <span class="src">04 · Empathy map &amp; statistics concept</span>
+              <h3>Show progress without a streak to protect</h3>
+              <p class="decision-takeaway">Make progress readable without introducing a streak or ranking.</p><figure class="decision-example"><div class="decision-ui"><div class="decision-ui__top">Statistics</div><div class="decision-ui__stats"><div class="kp-wstat__card"><span class="kp-wstat__t">Weekly Stats</span><div class="kp-bigring" role="img" aria-label="Illustrative completion arc, two of five tasks complete"><svg viewBox="0 0 74 74" aria-hidden="true"><defs><linearGradient id="decision-progress-gradient"><stop stop-color="#0b5fd0"/><stop offset="1" stop-color="#00b6d4"/></linearGradient></defs><circle class="bg" cx="37" cy="37" r="30"/><circle class="fg" cx="37" cy="37" r="30" stroke-dasharray="75.4 188.5"/></svg><b>5</b></div></div><div class="kp-wstat__bar"><span><b>5</b><small>To do</small></span><span><b>2</b><small>Done</small></span><span><b>3</b><small>Left</small></span></div></div></div><figcaption>Interface schematic · illustrative counts</figcaption></figure><div class="decision-response"><p><b>Design response.</b> Statistics pairs a completion arc with explicit
+                To do, Done and Left counts. It gives a readable summary without adding
+                a streak or ranking against other people.</p></div><details class="case-details decision-evidence"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Research &amp; trade-offs</span></summary><div class="case-details__body"><p><b>What I heard.</b> Comparison and high expectations were recurring
+                pressures, while completing something could feel encouraging.</p><p><b>Trade-off.</b> Even a count of unfinished work can feel discouraging.
+                Whether this presentation encourages a return after a missed day remains
+                an open question.</p></div></details></div>
+          </div>
+        </section>
+
+        <section class="section" id="validation" data-accent="yellow">
+          <div class="section__head" data-kicker="Feedback &amp; iteration">
+            <h2>What the feedback supports</h2>
+            <p>Encouraging responses, with specific reasons to keep iterating.</p>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <span class="src">Prototype questionnaire · 10 respondents</span>
+              <h3>The idea was understood after an explanation</h3>
+              <p>Nine of ten respondents said they understood the problem KeePlan
+                addressed after listening to the <b>designer's explanation</b>; one was
+                unsure. Seven chose the highest app rating and three chose the next highest.</p>
+              <p>This supports interest in the concept. It does not establish that people
+                can discover the flow unaided, complete tasks successfully or experience
+                less stress in everyday use.</p>
+            </div>
+            <div class="note">
+              <span class="src">Reported improvements · multiple selections allowed</span>
+              <h3>Clarity needs a closer look</h3>
+              <p>Three respondents flagged unclear type, one flagged visual colour and
+                one flagged navigation. These counts describe overlapping responses,
+                rather than separate groups.</p>
+              <p>The interface response prioritises labelled navigation, a consistent
+                type hierarchy and clear state feedback. A follow-up test should cover
+                creating a task, joining an event and hiding a profile field without
+                guidance, recording errors and participants' explanations.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="visual-decisions" data-accent="orange">
+          <div class="section__head" data-kicker="Visual decisions">
+            <h2>Clarity before decoration</h2>
+            <p>A light surface and a restrained set of signals.</p>
+          </div>
+          <div class="prose">
+            <p>The research favoured a bright environment and described a preference for
+              light green and white. I kept the light surface and chose a blue-to-cyan
+              accent for this interface. The accent is <b>my design choice</b>, not a colour preference established by the survey.</p>
+            <p>Colour highlights actions and state; labels and numbers carry the meaning.
+              Consistent icons support recognition across planning and events. The palette
+              and typography still need evaluation in the complete interface, particularly
+              given the feedback about legibility.</p>
+          </div>
+          <details class="case-details">
+            <summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Palette &amp; icons</span></summary>
+            <div class="case-details__body">
+              <div class="swatches">
+                <span class="sw"><i style="background:#ffffff"></i><b>#ffffff</b><span>Surface</span></span>
+                <span class="sw"><i style="background:#dbe9fb"></i><b>#dbe9fb</b><span>Soft</span></span>
+                <span class="sw"><i style="background:#0b5fd0"></i><b>#0b5fd0</b><span>Brand</span></span>
+                <span class="sw"><i style="background:#00b6d4"></i><b>#00b6d4</b><span>Cyan</span></span>
+                <span class="sw"><i style="background:#0d1b2a"></i><b>#0d1b2a</b><span>Ink</span></span>
+              </div>
+              <p>The interface uses a shared set of SVG icons. Reusing their shapes across
+                screens lets the same symbol keep its meaning when its colour or context changes.</p>
+              <div class="iconwall" id="iconwall"></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="section" id="motion-spec" data-accent="azure">
+          <div class="section__head" data-kicker="Motion">
+            <h2>Make state changes understandable</h2>
+            <p>Feedback where the action happens.</p>
+          </div>
+          <div class="prose">
+            <p>The create button moves through waiting and confirmation in the same place,
+              so the person can follow the result of their action. A moving segment marker
+              connects a selection to its content; brief screen transitions preserve a
+              sense of direction.</p>
+            <p>These are interaction choices to evaluate, rather than measured usability
+              improvements. The reduced-motion option removes transitional movement while
+              keeping the resulting state visible.</p>
+          </div>
+          <details class="case-details">
+            <summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>Motion details</span></summary>
+            <div class="case-details__body">
+              <p>Durations and curves share the Motion Lab tokens. The create delay is
+                simulated for this demo.</p>
+              <dl class="spec">
+                <dt>Screen change</dt><dd>16px slide + fade, var(--d-4), var(--e-out)</dd>
+                <dt>Outgoing screen</dt><dd>14px, var(--d-3), var(--e-standard)</dd>
+                <dt>Segment marker</dt><dd>var(--d-3), var(--e-spring), scaleX to 1.26</dd>
+                <dt>Dashboard cards</dt><dd>420ms, 60ms stagger, var(--e-out)</dd>
+                <dt>Create button</dt><dd>900ms simulated wait inside the button</dd>
+                <dt>Statistics rings</dt><dd>var(--d-5), 120ms apart</dd>
+                <dt>Activity bars</dt><dd>var(--d-5), 45ms stagger</dd>
+                <dt>Toast</dt><dd>in var(--d-4), out var(--d-2), 2.4s hold</dd>
+              </dl>
+              <p>The segment marker draws on experiment 02, the create button on 04,
+                the list entrance on 07 and the toast on 05.</p>
+            </div>
+          </details>
+        </section>
+        </div>
+      </article>
+    </section>
+
+    <!-- about ---------------------------------------------------------- -->
+    <section class="chapter" data-chapter="about">
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head"><h2>About</h2></div>
+          <div class="about">
+            <p>
+              I am Ruxin Liang. My work is in 3D; I explore interface design independently.
+              This lab collects the visual and interaction questions I am working through.
+            </p>
+            <p>
+              I start with a formula, choose its parameters and adjust them until the result
+              feels right. I build with Claude's help; choosing the direction and refining
+              the behaviour are my design work.
+            </p>
+            <p>
+              The artwork is generated from formulas, the KeePlan prototype runs in the browser,
+              and its icons are SVG paths. Experiment 03 also powers the expanding detail
+              panels. The motion control follows your system preference and lets you
+              pause animation.
+            </p>
+            <div class="links">
+              <a class="btn" href="https://www.behance.net/ruxin-liang" target="_blank" rel="noopener">
+                Portfolio on Behance
+              </a>
+              <a class="btn btn--ghost" href="https://ruxin.art" target="_blank" rel="noopener">
+                ruxin.art
+              </a>
+              <a class="btn btn--ghost" href="https://www.linkedin.com/in/ruxinliang" target="_blank" rel="noopener">
+                LinkedIn
+              </a>
+              <a class="btn btn--ghost" href="https://github.com/ruxinliang-dev" target="_blank" rel="noopener">
+                GitHub
+              </a>
+            </div>
+            <div class="tally" id="tally" aria-label="What the site is made of"></div>
+
+          </div>
+        </div>
+      </article>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/art.js?v=234"></script>
+<script src="assets/labs.js?v=197"></script>
+<script src="assets/site.js?v=208"></script>
+<script src="assets/keeplan.js?v=210"></script>
+<script src="assets/pager.js?v=209"></script>
+<script src="assets/disclosures.js?v=200"></script>
+</body>
+</html>
