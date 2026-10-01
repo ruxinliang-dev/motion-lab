@@ -522,7 +522,7 @@
         if (!pick.on) {
           ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
           ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
-          ctx.fillText('drag along \u2192 send a colour to Motion', w - 14, 20);
+          ctx.fillText('drag \u2192 send colour', w - 14, 20);
           ctx.globalAlpha = 1; ctx.textAlign = 'left';
         }
       });
