@@ -295,27 +295,40 @@
         return null;
       }
       var dim = { w: 0, h: 0 };
+      var pressT = 0, pressX = 0, pressY = 0, shown = null, shownT = 0;
+      function clearPress() { if (pressT) { clearTimeout(pressT); pressT = 0; } }
       function down(e) {
         if (still()) return;
         var p = local(e); ptr.x = p.x; ptr.y = p.y; ptr.vx = ptr.vy = 0; ptr.t = performance.now();
         var b = hit(p.x, p.y);
-        if (!b) { spawn(p.x, p.y, dim.w, dim.h); b = bodies[bodies.length - 1]; }
-        drag = b; touched = true;
+        touched = true;
+        if (!b) {
+          /* a tap on empty space drops a shape right there and lets go of it */
+          spawn(p.x, p.y, dim.w, dim.h);
+          e.preventDefault();
+          return;
+        }
+        /* a tap on a shape picks it up; held still for half a second it tells you its colour */
+        drag = b; shown = null; pressX = p.x; pressY = p.y;
+        clearPress();
+        pressT = setTimeout(function () { pressT = 0; if (drag === b) { shown = b; shownT = 0; } }, 480);
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
         e.preventDefault();
       }
       function move(e) {
         if (!drag) return;
         var p = local(e), now = performance.now(), dtm = Math.max(1, now - ptr.t) / 1000;
+        if (pressT && Math.hypot(p.x - pressX, p.y - pressY) > 7) clearPress();
         ptr.vx = (p.x - ptr.x) / dtm * 0.6 + ptr.vx * 0.4;
         ptr.vy = (p.y - ptr.y) / dtm * 0.6 + ptr.vy * 0.4;
         ptr.x = p.x; ptr.y = p.y; ptr.t = now;
       }
       function up() {
+        clearPress();
         if (!drag) return;
         var c = function (v) { return Math.max(-1700, Math.min(1700, v)); };
-        drag.vx = c(ptr.vx); drag.vy = c(ptr.vy);
-        drag.vr = drag.vx / drag.r;
+        if (shown === drag) { drag.vx = 0; drag.vy = 0; shownT = 1.4; }   /* the label lingers a moment after letting go */
+        else { drag.vx = c(ptr.vx); drag.vy = c(ptr.vy); drag.vr = drag.vx / drag.r; }
         drag = null;
       }
       host.style.touchAction = 'none';
@@ -342,21 +355,33 @@
         lastT = t;
         step(dt, w, h);
         for (var gi = 0; gi < bodies.length; gi++) drawBody(ctx, bodies[gi]);
-        if (!touched) {
-          /* the call to action: a ring that breathes over the empty top of the tile, and the words under it */
-          var pulse = 0.5 + 0.5 * Math.sin(t * 3);
-          var cx = w * 0.5, cy = h * 0.3;
-          ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5;
-          ctx.globalAlpha = 0.25 + 0.25 * pulse;
-          ctx.beginPath(); ctx.arc(cx, cy, 14 + 8 * pulse, 0, 6.2832); ctx.stroke();
-          ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 6.2832); ctx.fillStyle = tok('--ink'); ctx.fill();
-          ctx.font = '600 12px ' + (tok('--mono') || 'ui-monospace, monospace');
-          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.7; ctx.textAlign = 'center';
-          ctx.fillText('tap anywhere to drop a shape', cx, cy + 40);
-          ctx.globalAlpha = 0.5; ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
-          ctx.fillText('drag to throw \u00b7 same colours merge \u00b7 double-tap to clear', cx, cy + 58);
-          ctx.globalAlpha = 1; ctx.textAlign = 'left';
+        if (shown) {
+          if (shownT > 0) { shownT -= dt; if (shownT <= 0) shown = null; }
+          if (shown && bodies.indexOf(shown) < 0) shown = null;
         }
+        if (shown) {
+          var txt = String(shown.col).toUpperCase();
+          ctx.font = '600 12px ' + (tok('--mono') || 'ui-monospace, monospace');
+          var tw = ctx.measureText(txt).width + 22, th = 24;
+          var lx = Math.max(6, Math.min(w - tw - 6, shown.x - tw / 2));
+          var ly = Math.max(6, shown.y - shown.r - th - 10);
+          ctx.fillStyle = tok('--ink');
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(lx, ly, tw, th, 12); else ctx.rect(lx, ly, tw, th);
+          ctx.fill();
+          ctx.fillStyle = shown.col; ctx.beginPath(); ctx.arc(lx + 12, ly + th / 2, 4.5, 0, 6.2832); ctx.fill();
+          ctx.fillStyle = tok('--bg'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(txt, lx + 21, ly + th / 2 + 0.5);
+          ctx.textBaseline = 'alphabetic';
+        }
+        /* the hint stays in the top-left corner, under the word Motion, for as long as the tile is on screen */
+        ctx.font = '500 11px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.5 : 0.78; ctx.textAlign = 'left';
+        ctx.fillText('tap \u2192 drop a shape', 16, 56);
+        ctx.fillText('drag \u2192 throw it', 16, 72);
+        ctx.fillText('hold \u2192 see its colour', 16, 88);
+        ctx.fillText('double-tap \u2192 clear', 16, 104);
+        ctx.globalAlpha = 1;
       });
       return function () {
         host.removeEventListener('pointerdown', down);
