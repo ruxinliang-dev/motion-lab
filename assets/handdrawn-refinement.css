@@ -454,3 +454,20 @@
   letter-spacing:-.012em;
   text-transform:none;
 }
+
+/* ---- intro: the note and the arrow (her red mark on the screenshot) ----
+   The note starts on the same left edge as the chapter list under it (the page gutter plus the list's own 4px), and fills the line
+   up to the arrow instead of being pushed against it. The arrow now starts low, dips deeper, ties its loop and rises into the
+   progress mark; the tip is still placed on the mark with one number (its tip sits 14/240 of the width below the box's top, 236/240 across).
+   The pen-in animation is untouched: it is the same pathLength / dashoffset drawing. */
+@media (min-width:641px){
+  .page--intro .doodle{
+    left:max(var(--pad),calc((100vw - var(--maxw))/2));
+    justify-content:flex-start;
+  }
+  .page--intro .doodle p.doodle__t{flex:1 1 auto;max-width:none;padding-left:4px;padding-right:16px}
+  .page--intro .doodle .doodle__across{
+    --aw:clamp(120px,12vw,160px);
+    margin-top:calc(17.5px - var(--aw) * .0583);
+  }
+}

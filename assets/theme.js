@@ -311,64 +311,32 @@
     openBtn.className = 'iconbtn';
     openBtn.type = 'button';
     openBtn.id = 'shade';
-    openBtn.title = 'Brightness and greyness';
-    openBtn.setAttribute('aria-label', 'Brightness and greyness');
-    openBtn.setAttribute('aria-expanded', 'false');
+    openBtn.title = 'Switch to dark';
+    openBtn.setAttribute('aria-label', 'Switch to dark');
     openBtn.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/>' +
       '<path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8" fill="currentColor" ' +
       'stroke="none"/></svg>';
     nav.appendChild(openBtn);
 
-    panel = document.createElement('div');
-    panel.className = 'shade';
-    panel.hidden = true;
-    panel.innerHTML =
-      '<div class="shade__row"><label for="shadeB">Brightness</label>' +
-      '<input id="shadeB" type="range" min="6" max="100" step="1"></div>' +
-      '<div class="shade__val"><span data-out="b"></span></div>' +
-      '<div class="shade__row"><label for="shadeG">Greyness</label>' +
-      '<input id="shadeG" type="range" min="0" max="130" step="1"></div>' +
-      '<div class="shade__val"><span data-out="g"></span></div>' +
-      '<div class="shade__sw"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
-      '<div class="shade__hex" data-out="hex"></div>' +
-      '<button class="shade__reset" type="button">Back to default</button>';
-    document.body.appendChild(panel);
-
-    var b = panel.querySelector('#shadeB');
-    var g = panel.querySelector('#shadeG');
-    b.value = L; g.value = S;
-
-    b.addEventListener('input', function () {
-      L = +b.value; store('rl-bright', L); paint();
-    });
-    g.addEventListener('input', function () {
-      S = +g.value; store('rl-grey', S); paint();
-    });
-    panel.querySelector('.shade__reset').addEventListener('click', function () {
-      L = 100; S = 100; b.value = L; g.value = S;
-      store('rl-bright', L); store('rl-grey', S); paint();
-    });
-
+    /* One press switches the page between light and dark. No panel, no sliders:
+       the knobs stay inside build() but are fixed at two settings, light (100)
+       and dark (8), and the choice is remembered. */
+    var DARK_L = 8;
+    var sync = function () {
+      var dark = L < 52;
+      openBtn.title = dark ? 'Switch to light' : 'Switch to dark';
+      openBtn.setAttribute('aria-label', openBtn.title);
+      openBtn.setAttribute('aria-pressed', String(dark));
+    };
+    L = L < 52 ? DARK_L : 100;
+    S = 100;
     openBtn.addEventListener('click', function () {
-      var open = !panel.hidden;
-      panel.hidden = open;
-      openBtn.setAttribute('aria-expanded', String(!open));
+      L = L < 52 ? 100 : DARK_L;
+      store('rl-bright', L); store('rl-grey', S);
+      paint(); sync();
     });
-    document.addEventListener('click', function (e) {
-      if (panel.hidden) return;
-      if (panel.contains(e.target) || openBtn.contains(e.target)) return;
-      panel.hidden = true;
-      openBtn.setAttribute('aria-expanded', 'false');
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !panel.hidden) {
-        panel.hidden = true;
-        openBtn.setAttribute('aria-expanded', 'false');
-        openBtn.focus();
-      }
-    });
-
+    sync();
     paint();
   }
 
