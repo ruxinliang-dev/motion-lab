@@ -244,14 +244,17 @@
           b = bodies[i];
           if (b === drag) {
             /* follows the pointer with a little lag, which is what makes a throw feel weighted */
+            b.sleep = false; b.rest = 0;
             b.vx = (ptr.x - b.x) * 22; b.vy = (ptr.y - b.y) * 22;
             b.x += b.vx * dt; b.y += b.vy * dt;
             b.rot += b.vr * dt;
             continue;
           }
+          if (b.sleep) continue;     /* a shape that has come to rest stays exactly where it is until something hits it */
           b.vy += G * dt;
           b.x += b.vx * dt; b.y += b.vy * dt;
           b.rot += b.vr * dt;
+          b.vr *= Math.exp(-1.6 * dt);
           if (b.x < b.r) { b.x = b.r; b.vx = -b.vx * 0.4; }
           if (b.x > w - b.r) { b.x = w - b.r; b.vx = -b.vx * 0.4; }
           if (b.y > h - b.r) {
@@ -261,6 +264,9 @@
             b.vr = b.vx / b.r;
           }
           if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.3; }
+          /* slow for long enough: freeze it, spin included */
+          if (Math.abs(b.vx) + Math.abs(b.vy) < 26) b.rest = (b.rest || 0) + dt; else b.rest = 0;
+          if (b.rest > 0.35) { b.sleep = true; b.vx = 0; b.vy = 0; b.vr = 0; }
         }
         for (var pass = 0; pass < 3; pass++) {
           for (i = 0; i < bodies.length; i++) {
@@ -272,15 +278,17 @@
               if (A.col === B.col && merge(A, B, i, j, w, h)) { i = -1; j = 0; break; }
               var nx = dx / d, ny = dy / d, over = min - d;
               var ma = A.r * A.r, mb = B.r * B.r, tot = ma + mb;
-              var fa = A === drag ? 0 : (B === drag ? 1 : mb / tot);
-              var fb = B === drag ? 0 : (A === drag ? 1 : ma / tot);
+              var fa = (A === drag || A.sleep) ? 0 : ((B === drag || B.sleep) ? 1 : mb / tot);
+              var fb = (B === drag || B.sleep) ? 0 : ((A === drag || A.sleep) ? 1 : ma / tot);
               A.x -= nx * over * fa; A.y -= ny * over * fa;
               B.x += nx * over * fb; B.y += ny * over * fb;
               var rv = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
               if (rv < 0) {
+                /* a hard enough knock wakes a resting shape */
+                if (rv < -45) { if (A.sleep) { A.sleep = false; A.rest = 0; } if (B.sleep) { B.sleep = false; B.rest = 0; } }
                 var imp = -(1 + 0.3) * rv / (1 / ma + 1 / mb);
-                if (A !== drag) { A.vx -= imp * nx / ma; A.vy -= imp * ny / ma; }
-                if (B !== drag) { B.vx += imp * nx / mb; B.vy += imp * ny / mb; }
+                if (A !== drag && !A.sleep) { A.vx -= imp * nx / ma; A.vy -= imp * ny / ma; }
+                if (B !== drag && !B.sleep) { B.vx += imp * nx / mb; B.vy += imp * ny / mb; }
               }
             }
           }
@@ -314,6 +322,8 @@
           pressT = setTimeout(function () { pressT = 0; if (pending) { shown = pending; shownT = 0; } }, 480);
         } else {
           drag = b;
+          /* lifting a shape out of a pile lets whatever rested on it fall */
+          bodies.forEach(function (q) { q.sleep = false; q.rest = 0; });
           pressT = setTimeout(function () { pressT = 0; if (drag === b) { shown = b; shownT = 0; } }, 480);
         }
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
@@ -343,14 +353,6 @@
         else { drag.vx = c(ptr.vx); drag.vy = c(ptr.vy); drag.vr = drag.vx / drag.r; }
         drag = null;
       }
-      /* the Color tile sends colours here: each one arrives as a new shape dropped from the top */
-      function onColour(e) {
-        if (!dim.w || !e.detail || !e.detail.col) return;
-        var b = make(dim.w * (0.12 + 0.76 * Math.random()), 0, dim.w, dim.h);
-        b.y = b.r; b.col = e.detail.col; b.pop = 1;
-        release(b);
-      }
-      window.addEventListener('labcolour', onColour);
       host.style.touchAction = 'none';
       host.style.cursor = 'pointer';
       host.addEventListener('pointerdown', down);
@@ -409,7 +411,6 @@
         host.removeEventListener('pointermove', move);
         host.removeEventListener('pointerup', up);
         host.removeEventListener('pointercancel', up);
-        window.removeEventListener('labcolour', onColour);
         if (stopScene) stopScene();
       };
     }
@@ -425,10 +426,13 @@
     span: 'tile--1x2',
     math: 'mix(a, b, t) where t = s²(3 - 2s)',
     mount: function (host) {
-      /* Drag along the ramp to pick a colour; let go and it is thrown into the Motion tile as a new shape. The colour read here is the same
-         one the gradient is drawn with (sampled off the same smoothstep), so what you pick is what you see. */
-      var pick = { on: false, hover: false, y: 0.5, sent: 0 };
+      /* A small game of its own: a swatch shows a colour taken from somewhere on the ramp; drag the ring along the ramp to where that colour
+         lives and let go. Five rounds. The score is how close you landed (on the ramp, not on the screen), 100 for dead on. What you
+         read is the same function the gradient is drawn with, so the answer is always exactly on the ramp. */
+      var ROUNDS = 5;
+      var G = { round: 1, total: 0, target: Math.random(), phase: 'play', res: null, resT: 0, on: false, hover: false, y: 0.5, best: 0, done: [] };
       var geom = { x: 0, y: 0, bw: 1, bh: 1 };
+      var timer = 0;
       function hexOf(rgbStr) {
         var m = String(rgbStr).match(/\d+/g) || [0, 0, 0];
         return '#' + [0, 1, 2].map(function (i) { return ('0' + (+m[i]).toString(16)).slice(-2); }).join('');
@@ -438,20 +442,47 @@
         var r = host.getBoundingClientRect();
         return Math.max(0, Math.min(1, (e.clientY - r.top - geom.y) / geom.bh));
       }
-      function d(e) { if (still()) return; pick.on = true; pick.hover = true; pick.y = norm(e); try { host.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); }
-      function mv(e) { pick.hover = true; if (pick.on || e.pointerType === 'mouse') pick.y = norm(e); }
-      function u() {
-        if (!pick.on) return;
-        pick.on = false; pick.sent = 1;
-        window.dispatchEvent(new CustomEvent('labcolour', { detail: { col: colourAt(pick.y) } }));
+      function nextTarget(prev) {
+        var t; do { t = 0.06 + Math.random() * 0.88; } while (Math.abs(t - prev) < 0.18);
+        return t;
       }
-      function lv() { if (!pick.on) pick.hover = false; }
+      function restart() { G.round = 1; G.total = 0; G.done = []; G.target = nextTarget(-1); G.phase = 'play'; G.res = null; }
+      function d(e) {
+        if (still()) return;
+        if (G.phase === 'over') { restart(); e.preventDefault(); return; }
+        if (G.phase !== 'play') return;
+        G.on = true; G.hover = true; G.y = norm(e);
+        try { host.setPointerCapture(e.pointerId); } catch (x) {}
+        e.preventDefault();
+      }
+      function mv(e) { if (G.phase !== 'play') return; G.hover = true; if (G.on || e.pointerType === 'mouse') G.y = norm(e); }
+      function u() {
+        if (!G.on || G.phase !== 'play') { G.on = false; return; }
+        G.on = false;
+        var dist = Math.abs(G.y - G.target);
+        var pts = Math.max(0, Math.round(100 - dist * 260));
+        G.total += pts; G.best = Math.max(G.best, pts);
+        G.res = { pts: pts, dist: dist, at: G.y, perfect: dist < 0.012 };
+        G.done.push(pts);
+        G.phase = 'result'; G.resT = 1;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          if (G.round >= ROUNDS) { G.phase = 'over'; G.res = null; }
+          else { G.round++; G.target = nextTarget(G.target); G.phase = 'play'; G.res = null; }
+        }, 1500);
+      }
+      function lv() { if (!G.on) G.hover = false; }
       host.style.touchAction = 'none'; host.style.cursor = 'crosshair';
       host.addEventListener('pointerdown', d);
       host.addEventListener('pointermove', mv);
       host.addEventListener('pointerup', u);
       host.addEventListener('pointercancel', u);
       host.addEventListener('pointerleave', lv);
+      function pill(ctx, x, y, w, h, fill) {
+        ctx.fillStyle = fill; ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, w, h, h / 2); else ctx.rect(x, y, w, h);
+        ctx.fill();
+      }
       var stop = scene(host, function (ctx, w, h, t) {
         ctx.clearRect(0, 0, w, h);
         /* During the first layout pass the host can be a pixel wide. Clamp the
@@ -478,55 +509,80 @@
         else ctx.rect(x, y, bw, bh);
         ctx.fillStyle = g;
         ctx.fill();
-
-        /* the sampling line, with four handles drifting on their own sines */
         ctx.clip();
-        ctx.strokeStyle = 'rgba(255,255,255,.35)';
-        ctx.lineWidth = 1;
+
         var cx = x + bw / 2;
+        ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + bh); ctx.stroke();
-        for (var k = 0; k < 4; k++) {
-          var base = 0.12 + k * 0.26;
-          var p = base + Math.sin(t * 0.55 + k * 1.7) * 0.035;
-          var py = y + bh * p;
-          ctx.fillStyle = k % 2 ? 'rgba(255,255,255,.62)' : '#fff';
+        var mono = tok('--mono') || 'ui-monospace, monospace';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+
+        if (G.phase !== 'over') {
+          /* the swatch to match, top-left of the ramp */
+          var sw = Math.min(58, bw * 0.34), sh = Math.min(34, bh * 0.1);
+          ctx.fillStyle = colourAt(G.target);
           ctx.beginPath();
-          ctx.arc(cx, py, k % 2 ? 2.6 : 3.6, 0, 6.2832);
+          if (ctx.roundRect) ctx.roundRect(x + 10, y + 10, sw, sh, 8); else ctx.rect(x + 10, y + 10, sw, sh);
           ctx.fill();
-        }
-        /* the picker: a ring with the colour it would send, and a hex label, while a finger or the mouse is on the ramp */
-        if (pick.hover || pick.on) {
-          var py2 = y + bh * pick.y, col = colourAt(pick.y);
-          ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(cx, py2, pick.on ? 11 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
-          ctx.font = '600 11px ' + (tok('--mono') || 'ui-monospace, monospace');
-          var lab = col.toUpperCase(), lw = ctx.measureText(lab).width + 16;
-          var lx = Math.min(x + bw - lw - 8, cx + 18);
-          ctx.fillStyle = 'rgba(0,0,0,.55)';
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(lx, py2 - 10, lw, 20, 10); else ctx.rect(lx, py2 - 10, lw, 20);
-          ctx.fill();
-          ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-          ctx.fillText(lab, lx + 8, py2 + 0.5);
-          ctx.textBaseline = 'alphabetic';
-        }
-        /* after letting go, a ring leaves the ramp and fades: the colour has been sent */
-        if (pick.sent > 0) {
-          var ps2 = y + bh * pick.y;
-          ctx.strokeStyle = 'rgba(255,255,255,' + (0.8 * pick.sent) + ')'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(cx, ps2, 11 + (1 - pick.sent) * 26, 0, 6.2832); ctx.stroke();
-          pick.sent = Math.max(0, pick.sent - 0.045);
-        }
-        ctx.restore();
-        /* a line of instruction, in the corner the tile's own label leaves free */
-        if (!pick.on) {
-          ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
-          ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
-          ctx.fillText('drag \u2192 send colour', w - 14, 20);
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.font = '600 10px ' + mono; ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
+          ctx.fillText('match this', x + 10, y + 10 + sh + 11);
+          ctx.globalAlpha = 1;
+
+          /* the ring you drag */
+          if (G.hover || G.on || G.phase === 'result') {
+            var py = y + bh * (G.phase === 'result' ? G.res.at : G.y);
+            var col = colourAt(G.phase === 'result' ? G.res.at : G.y);
+            ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(cx, py, G.on ? 11 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
+          }
+
+          /* after letting go: where the colour really was, and what it was worth */
+          if (G.phase === 'result' && G.res) {
+            var ty = y + bh * G.target, pyr = y + bh * G.res.at;
+            ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.moveTo(cx, pyr); ctx.lineTo(cx, ty); ctx.stroke(); ctx.setLineDash([]);
+            ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, ty, 11, 0, 6.2832); ctx.stroke();
+            var msg = G.res.perfect ? 'perfect  +' + G.res.pts : '+' + G.res.pts;
+            ctx.font = '700 13px ' + mono;
+            var mw = ctx.measureText(msg).width + 18;
+            var mx = Math.min(x + bw - mw - 8, cx + 20), my = Math.max(y + 22, Math.min(y + bh - 22, (ty + pyr) / 2));
+            pill(ctx, mx, my - 12, mw, 24, 'rgba(0,0,0,.6)');
+            ctx.fillStyle = '#fff'; ctx.fillText(msg, mx + 9, my + 0.5);
+          }
+
+          /* score and round dots, along the foot of the ramp */
+          for (var rd = 0; rd < ROUNDS; rd++) {
+            ctx.fillStyle = rd < G.done.length ? '#fff' : 'rgba(255,255,255,.35)';
+            ctx.beginPath(); ctx.arc(x + 16 + rd * 12, y + bh - 14, 3.2, 0, 6.2832); ctx.fill();
+          }
+          ctx.font = '600 11px ' + mono; ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
+          ctx.fillText(String(G.total) + ' pts', x + bw - 10, y + bh - 14);
+          ctx.textAlign = 'left';
+        } else {
+          /* five rounds done: the total, and an invitation to go again */
+          ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x, y, bw, bh);
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#fff';
+          ctx.font = '700 ' + Math.round(Math.min(34, bw * 0.2)) + 'px ' + mono;
+          ctx.fillText(String(G.total) + ' / ' + (ROUNDS * 100), cx, y + bh * 0.42);
+          ctx.font = '500 11px ' + mono; ctx.globalAlpha = 0.85;
+          ctx.fillText('best round ' + G.best, cx, y + bh * 0.42 + 26);
+          ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 3);
+          ctx.fillText('tap to play again', cx, y + bh * 0.42 + 48);
           ctx.globalAlpha = 1; ctx.textAlign = 'left';
         }
+        ctx.textBaseline = 'alphabetic';
+        ctx.restore();
+
+        /* the instruction, in the corner the tile's own label leaves free */
+        ctx.font = '500 10.5px ' + mono;
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.55; ctx.textAlign = 'right';
+        ctx.fillText(G.phase === 'over' ? 'game over' : 'round ' + G.round + ' / ' + ROUNDS + ' \u00b7 drag to match', w - 14, 20);
+        ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
+        clearTimeout(timer);
         host.removeEventListener('pointerdown', d);
         host.removeEventListener('pointermove', mv);
         host.removeEventListener('pointerup', u);
