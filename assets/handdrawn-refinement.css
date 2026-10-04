@@ -626,3 +626,6 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 .pcard:hover .kpc-d,.pcard:focus-visible .kpc-d{transform:translate(-3px,3px)}
 @media (prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-chip,.pcard__art--keeplan .kpc-phone{transition:none}.pcard:hover .kpc-chip,.pcard:hover .kpc-phone{transform:none}}
 
+/* the prototype's phone, scaled to fit the sheet (see fit() in site.js); the list beside it keeps its size */
+.casesheet .page--flow--inline .kp{zoom:var(--kps,1);align-items:center}
+

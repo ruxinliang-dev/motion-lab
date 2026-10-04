@@ -908,6 +908,15 @@
   }
   window.addEventListener('resize', function () { if (openId) place(); });
 
+  /* KeePlan's phone is 695px tall at its design size, which is more than a sheet shows. The prototype (the step list and the phone together) is
+     scaled down (zoom, so layout follows) until all of it fits between the sticky nav and the foot of the sheet. */
+  function fit(el) {
+    var sc = scroller(el), nav = el.querySelector('.pnav');
+    var avail = sc.clientHeight - (nav ? nav.offsetHeight : 0) - 56;
+    var k = Math.max(0.5, Math.min(1, avail / 695));
+    el.style.setProperty('--kps', k.toFixed(3));
+  }
+  window.addEventListener('resize', function () { if (openId) fit(sheets[openId]); });
   function show(id) {
     var el = sheets[id];
     if (!el) return false;
@@ -917,6 +926,7 @@
     scroller(el).scrollTop = 0;
     html.classList.add('has-sheet');
     place();
+    fit(el);
     mark(el);
     el.querySelector('.casesheet__close').focus({ preventScroll: true });
     return true;
@@ -952,7 +962,7 @@
     var sc = a.closest('.casesheet__scroll');
     if (!target || !sc) return;
     var nav = sc.querySelector('.pnav');
-    var top = target.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (nav ? nav.offsetHeight + 12 : 12);
+    var top = target.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (nav ? nav.offsetHeight + 34 : 12);
     sc.scrollTo({ top: Math.max(0, top), behavior: calm() ? 'auto' : 'smooth' });
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && openId) { e.preventDefault(); close(); } });

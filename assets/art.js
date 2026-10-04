@@ -439,16 +439,20 @@
     id: 'color',
     label: 'Color',
     span: 'tile--1x2',
-    math: 'one strip, one colour',
+    math: 'three colours, nested, no edges',
     mount: function (host) {
-      /* Simultaneous contrast, as a toy. The strip down the middle is ONE colour and never changes; only the ground behind it does.
-         Drag the handle on the left edge to slide the boundary between a hot ground (top) and a cool one (bottom) up and down the
-         strip: where the strip sits against the warm ground it reads darker and cooler, against the cool ground lighter and warmer.
-         Tap the strip to see its colour value, which stays the same however the ground moves. */
-      var STRIP = '#fb4f24', HOT = [200, 50, 220], COOL = [251, 79, 36];     /* HOT = the ring, COOL = the ground (and the centre) */
-      var HOT_T = HOT.slice(), COOL_T = COOL.slice();
-      /* The ground follows the strip's colour: above, the same hue pushed hotter and more saturated; below, a pale, quiet version of the
-         opposite hue. That is the pairing in the classic demonstration: the strip is identical, the two grounds pull it apart. */
+      /* A soft colour field. The whole tile is one set of nested rounded rectangles with no edges: the outermost one is the tile's own
+         surface colour, so the field melts into the card it sits on, and inside it three colours of a theme follow one another (a
+         glow, a ring, a core). The row of swatches at the foot picks the theme (each swatch shows its three colours); the round
+         handle on the left edge pushes the rings in and out; with nothing touched they breathe slowly. */
+      var THEMES = [
+        { n: 'Sunset', c: ['#ff7a45', '#e8449a', '#ffd36a'] },
+        { n: 'Ocean',  c: ['#2f6bff', '#00c2d1', '#aef2e2'] },
+        { n: 'Meadow', c: ['#35c76a', '#d4f04a', '#ffe3b8'] },
+        { n: 'Berry',  c: ['#7a5cff', '#ff5fa8', '#ffd0e6'] },
+        { n: 'Peach',  c: ['#ffb089', '#ff7aa8', '#fff0d8'] },
+        { n: 'Ink',    c: ['#2d3436', '#6c7a89', '#d3dae2'] }
+      ];
       function toRgb(hex) { var n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
       function rgbToHsl(c) {
         var r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, sat = 0, dd = mx - mn;
@@ -464,59 +468,55 @@
         var f = function (t) { t = (t + 1) % 1; return Math.round(255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p)); };
         return [f(h + 1 / 3), f(h), f(h - 1 / 3)];
       }
-      function groundFor(hex) {
-        /* the ring is the picked colour's hue turned about a third of the way round, vivid, at about the same lightness: close
-           enough in lightness that the soft edges read as haze rather than as outlines */
-        var hsl = rgbToHsl(toRgb(hex)), h = hsl[0], l = hsl[2];
-        var ringL = Math.max(0.46, Math.min(0.6, l));
-        var ring = hslToRgb(h + 100, 0.9, ringL);
-        return [ring, toRgb(hex)];
+      function fromBase(hex) {          /* any colour you pick becomes a theme: the colour, a vivid neighbour, a pale tint */
+        var hsl = rgbToHsl(toRgb(hex)), h = hsl[0], l = Math.max(0.5, Math.min(0.62, hsl[2]));
+        return [toRgb(hex), hslToRgb(h + 58, 0.85, l), hslToRgb(h - 32, 0.8, 0.84)];
       }
-      /* a row of swatches and a full colour picker sit over the lower edge of the ground: choose what colour the strip is */
-      var PRESETS = ['#fb4f24', '#ffe0c4', '#2f6bff', '#00b894', '#e91e63', '#2d3436'];
+      var cur = THEMES[0].c.map(toRgb), tgt = cur.map(function (c) { return c.slice(); });
+      var S = { y: 0.5, ty: 0.5, on: false, hover: false };
+      var geom = { x: 0, y: 0, w: 1, h: 1 };
+
+      /* the swatch row and a full colour picker */
       var bar = document.createElement('div');
-      bar.style.cssText = 'position:absolute;left:50%;bottom:30px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;' +
-        'padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2;touch-action:manipulation';
-      var chips = [];
-      function setStrip(c) {
-        STRIP = c.toLowerCase(); S.show = 1;
-        var gg = groundFor(STRIP); HOT_T = gg[0]; COOL_T = gg[1];
-        chips.forEach(function (ch) { ch.style.boxShadow = ch.dataset.c === STRIP ? '0 0 0 2px #111' : '0 0 0 1px rgba(0,0,0,.25)'; });
-        if (custom) custom.value = STRIP;
-      }
+      bar.style.cssText = 'position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;' +
+        'padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:2;touch-action:manipulation;max-width:calc(100% - 16px)';
       var narrow = host.clientWidth && host.clientWidth < 240;
-      var CH = narrow ? 14 : 18;
-      if (narrow) { PRESETS = PRESETS.slice(0, 4); bar.style.bottom = '22px'; bar.style.gap = '4px'; bar.style.padding = '4px 6px'; }
-      PRESETS.forEach(function (c) {
+      var CH = narrow ? 15 : 19;
+      var chips = [];
+      function pickTheme(i) {
+        tgt = THEMES[i].c.map(toRgb);
+        chips.forEach(function (ch, k) { ch.style.boxShadow = k === i ? '0 0 0 2px #111' : '0 0 0 1px rgba(0,0,0,.2)'; });
+        if (custom) custom.style.boxShadow = '0 0 0 1px rgba(0,0,0,.2)';
+      }
+      var visible = narrow ? THEMES.slice(0, 4) : THEMES;
+      visible.forEach(function (t, i) {
         var b = document.createElement('button');
-        b.type = 'button'; b.dataset.c = c; b.title = c; b.setAttribute('aria-label', 'Strip colour ' + c);
-        b.style.cssText = 'width:' + CH + 'px;height:' + CH + 'px;border-radius:50%;border:0;padding:0;cursor:pointer;background:' + c;
+        b.type = 'button'; b.title = t.n; b.setAttribute('aria-label', 'Colour theme ' + t.n);
+        b.style.cssText = 'width:' + CH + 'px;height:' + CH + 'px;border-radius:50%;border:0;padding:0;cursor:pointer;background:linear-gradient(135deg,' + t.c[0] + ' 0%,' + t.c[1] + ' 52%,' + t.c[2] + ' 100%)';
         b.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
-        b.addEventListener('click', function (e) { e.stopPropagation(); setStrip(c); });
+        b.addEventListener('click', function (e) { e.stopPropagation(); pickTheme(i); });
         bar.appendChild(b); chips.push(b);
       });
       var custom = document.createElement('input');
-      custom.type = 'color'; custom.value = STRIP; custom.title = 'Pick any colour'; custom.setAttribute('aria-label', 'Pick any colour');
+      custom.type = 'color'; custom.value = '#ff7a45'; custom.title = 'Make a theme from any colour'; custom.setAttribute('aria-label', 'Make a theme from any colour');
       custom.style.cssText = 'width:' + (CH + 4) + 'px;height:' + (CH + 4) + 'px;border:0;padding:0;border-radius:50%;background:none;cursor:pointer;overflow:hidden';
       custom.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
-      custom.addEventListener('input', function () { setStrip(custom.value); });
+      custom.addEventListener('input', function () {
+        tgt = fromBase(custom.value);
+        chips.forEach(function (ch) { ch.style.boxShadow = '0 0 0 1px rgba(0,0,0,.2)'; });
+        custom.style.boxShadow = '0 0 0 2px #111';
+      });
       bar.appendChild(custom);
       host.appendChild(bar);
-      var S = { y: 0.5, on: false, hover: false, show: 0, ty: 0.5 };
-      var geom = { x: 0, y: 0, bw: 1, bh: 1, sx: 0, sw: 1, sy0: 0, sy1: 1 };
+      pickTheme(0);
+
       function norm(e) {
         var r = host.getBoundingClientRect();
-        return Math.max(0.04, Math.min(0.96, (e.clientY - r.top - geom.y) / geom.bh));
+        return Math.max(0.04, Math.min(0.96, (e.clientY - r.top) / r.height));
       }
-      function onStrip(e) {
-        var r = host.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
-        return px >= geom.sx - 8 && px <= geom.sx + geom.sw + 8 && py >= geom.sy0 && py <= geom.sy1;
-      }
-      setStrip(STRIP); S.show = 0; HOT = HOT_T.slice(); COOL = COOL_T.slice();
       function d(e) {
         if (still()) return;
         if (e.target !== host && e.target.tagName !== 'CANVAS') return;
-        if (onStrip(e)) { S.show = 1; e.preventDefault(); return; }
         S.on = true; S.hover = true; S.ty = norm(e);
         try { host.setPointerCapture(e.pointerId); } catch (x) {}
         e.preventDefault();
@@ -530,74 +530,51 @@
       host.addEventListener('pointerup', u);
       host.addEventListener('pointercancel', u);
       host.addEventListener('pointerleave', lv);
-      function mixc(a, b, t) {
-        return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * t); }).join(',') + ')';
-      }
+
+      function mixRgb(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+      function css(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+      function sm(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
       var last = 0;
       var stop = scene(host, function (ctx, w, h, t) {
-        ctx.clearRect(0, 0, w, h);
         var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
-        /* the boundary eases toward the pointer, and drifts slowly by itself until someone touches it */
-        if (!S.on && !S.hover) S.ty = 0.5 + 0.28 * Math.sin(t * 0.6);
+        if (!S.on && !S.hover) S.ty = 0.5 + 0.22 * Math.sin(t * 0.5);
         S.y += (S.ty - S.y) * Math.min(1, dt * 9);
-        for (var ci = 0; ci < 3; ci++) { HOT[ci] += (HOT_T[ci] - HOT[ci]) * Math.min(1, dt * 7); COOL[ci] += (COOL_T[ci] - COOL[ci]) * Math.min(1, dt * 7); }
-        if (S.show > 0) S.show = Math.max(0, S.show - dt * 0.55);
+        for (var i = 0; i < 3; i++) for (var k = 0; k < 3; k++) cur[i][k] += (tgt[i][k] - cur[i][k]) * Math.min(1, dt * 6);
+        geom.w = w; geom.h = h;
 
-        var m = Math.min(Math.max(14, Math.min(w, h) * 0.11), w * 0.4, h * 0.4);
-        var x = m, y = m;
-        var bw = Math.max(1, w - m * 2), bh = Math.max(1, h - m * 2);
-        var r = Math.max(0, Math.min(20, bw * 0.12));
-        geom.x = x; geom.y = y; geom.bw = bw; geom.bh = bh;
+        var bg = toRgb((tok('--surface') || '#f4f3ee').length === 7 ? tok('--surface') : '#f4f3ee');
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = css(bg); ctx.fillRect(0, 0, w, h);
 
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r); else ctx.rect(x, y, bw, bh);
-        ctx.clip();
-
-        /* concentric rounded squares with no edges: the colour at each distance from the middle is the ground colour, blended toward the
-           ring colour by a soft bump. The ring sits where the handle puts it. The centre and the outside are the SAME colour. */
-        var rho = 0.18 + 0.5 * S.y, sig = 0.17, N = 44;
-        var half = Math.min(bw, bh) / 2, ccx = x + bw / 2, ccy = y + bh / 2;
-        ctx.fillStyle = mixc(COOL, COOL, 0); ctx.fillRect(x, y, bw, bh);
+        /* where each colour sits, from the outside in. The handle moves them all together; the breathing is a slow wobble on top. */
+        var sc = 0.78 + 0.34 * S.y, br = 0.025 * Math.sin(t * 0.9);
+        var p1 = Math.min(0.9, 0.80 * sc + br), p2 = 0.52 * sc - br * 0.6, p3 = 0.24 * sc + br * 0.4;
+        var N = 56, cx = w / 2, cy = h / 2;
         for (var q = N; q >= 1; q--) {
-          var dn = q / N;                               /* 1 at the outer edge, 0 at the middle */
-          var k = Math.exp(-((dn - rho) * (dn - rho)) / (2 * sig * sig));
-          var hh = half * dn * 1.45;                    /* reach the corners at dn = 1 */
-          var rr = Math.min(hh, hh * 0.55);
-          ctx.fillStyle = mixc(COOL, HOT, k);
+          var dn = q / N;                                  /* 1 at the outer edge of the tile, 0 in the middle */
+          var col;
+          if (dn >= p1) col = mixRgb(bg, cur[0], sm((1 - dn) / (1 - p1) * 1));   /* surface -> glow */
+          else if (dn >= p2) col = mixRgb(cur[0], cur[1], sm((p1 - dn) / (p1 - p2)));
+          else if (dn >= p3) col = mixRgb(cur[1], cur[2], sm((p2 - dn) / (p2 - p3)));
+          else col = cur[2];
+          var hx = (w / 2) * dn * 1.04, hy = (h / 2) * dn * 1.04, rr = Math.min(hx, hy) * 0.62;
+          ctx.fillStyle = css(col);
           ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(ccx - hh, ccy - hh, hh * 2, hh * 2, rr); else ctx.rect(ccx - hh, ccy - hh, hh * 2, hh * 2);
+          if (ctx.roundRect) ctx.roundRect(cx - hx, cy - hy, hx * 2, hy * 2, rr); else ctx.rect(cx - hx, cy - hy, hx * 2, hy * 2);
           ctx.fill();
         }
-        var cs = half * 0.5;
-        geom.sx = ccx - cs; geom.sw = cs * 2; geom.sy0 = ccy - cs; geom.sy1 = ccy + cs;
 
-        /* the handle, on the left edge of the ground */
-        var hy = y + bh * S.y;
+        /* the handle, on the left edge */
+        var hy2 = Math.max(24, Math.min(h - 24, h * S.y));
         ctx.fillStyle = '#12a1c0'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(x + 12, hy, S.on ? 12 : 10, 0, 6.2832); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(x + 6, hy - 3); ctx.lineTo(x + 12, hy - 6); ctx.lineTo(x + 18, hy - 3);
-        ctx.moveTo(x + 6, hy + 3); ctx.lineTo(x + 12, hy + 6); ctx.lineTo(x + 18, hy + 3); ctx.stroke();
+        ctx.beginPath(); ctx.arc(16, hy2, S.on ? 12 : 10, 0, 6.2832); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(10, hy2 - 3); ctx.lineTo(16, hy2 - 6); ctx.lineTo(22, hy2 - 3);
+        ctx.moveTo(10, hy2 + 3); ctx.lineTo(16, hy2 + 6); ctx.lineTo(22, hy2 + 3); ctx.stroke();
 
-        /* tap the strip: the value that never moves */
-        if (S.show > 0) {
-          var mono = tok('--mono') || 'ui-monospace, monospace';
-          var lab = STRIP.toUpperCase() + ' \u00b7 centre = edge';
-          ctx.font = '600 11px ' + mono; ctx.textBaseline = 'middle';
-          var lw = ctx.measureText(lab).width + 18, lx = x + bw / 2 - lw / 2, ly = ccy - 11;
-          ctx.globalAlpha = Math.min(1, S.show * 2);
-          ctx.fillStyle = 'rgba(0,0,0,.65)';
-          ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(lx, ly, lw, 22, 11); else ctx.rect(lx, ly, lw, 22); ctx.fill();
-          ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(lab, lx + 9, ly + 11.5);
-          ctx.globalAlpha = 1; ctx.textBaseline = 'alphabetic';
-        }
-        ctx.restore();
-
-        /* a line that says what the eye is doing, in the corner the tile's own label leaves free */
         ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';
-        ctx.fillText('drag ring · tap centre', w - 14, 20);
+        ctx.fillText('drag \u00b7 pick a theme', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
