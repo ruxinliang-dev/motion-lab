@@ -875,9 +875,38 @@
   }
   Object.keys(sheets).forEach(function (id) {
     var el = sheets[id];
+    var panel = document.createElement('div');
+    panel.className = 'casesheet__panel';
+    while (el.firstChild) panel.appendChild(el.firstChild);
+    el.appendChild(panel);
     scroller(el).addEventListener('scroll', function () { mark(el); }, { passive: true });
     el.querySelector('.casesheet__close').addEventListener('click', close);
+    /* the dimmed margin beside the panel is a way out too */
+    el.addEventListener('click', function (e) { if (e.target === el) close(); });
   });
+
+  /* The sheet sits between the two menus, so it is placed from where they actually are: below the top bar, above the bottom one.
+     On a phone it is full screen. */
+  function place() {
+    var nav = document.querySelector('.nav'), bar = document.querySelector('.deck__bar');
+    var small = window.matchMedia('(max-width: 760px)').matches;
+    var top = 0, bottom = 0;
+    if (!small) {
+      if (nav) top = Math.max(0, Math.round(nav.getBoundingClientRect().bottom));
+      if (bar) {
+        /* the bar element spans the whole deck and lets clicks through; the menu is its children, at the foot */
+        var kids = [].slice.call(bar.children).filter(function (k) { var r = k.getBoundingClientRect(); return r.height > 0 && r.top > window.innerHeight * 0.5; });
+        if (kids.length) {
+          var topMost = Math.min.apply(null, kids.map(function (k) { return k.getBoundingClientRect().top; }));
+          bottom = Math.max(0, Math.round(window.innerHeight - topMost + 8));
+        }
+      }
+    }
+    html.style.setProperty('--sheet-top', top + 'px');
+    html.style.setProperty('--sheet-bottom', bottom + 'px');
+    html.classList.toggle('sheet-full', small);
+  }
+  window.addEventListener('resize', function () { if (openId) place(); });
 
   function show(id) {
     var el = sheets[id];
@@ -887,7 +916,7 @@
     el.hidden = false;
     scroller(el).scrollTop = 0;
     html.classList.add('has-sheet');
-    if (deckEl) deckEl.inert = true;
+    place();
     mark(el);
     el.querySelector('.casesheet__close').focus({ preventScroll: true });
     return true;
@@ -897,7 +926,6 @@
     sheets[openId].hidden = true;
     openId = null;
     html.classList.remove('has-sheet');
-    if (deckEl) deckEl.inert = false;
     if (opener && opener.focus) { opener.focus({ preventScroll: true }); }
     opener = null;
   }
@@ -928,6 +956,13 @@
     sc.scrollTo({ top: Math.max(0, top), behavior: calm() ? 'auto' : 'smooth' });
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && openId) { e.preventDefault(); close(); } });
+  document.addEventListener('click', function (e) {
+    if (!openId || !e.target.closest) return;
+    if (e.target.closest('.deck__bar, .nav__name, .nav a[href^="#/"]')) {
+      hide();
+      history.replaceState(null, '', '#/project');
+    }
+  }, true);
 
   function fromHash(h) {
     var m = /^#\/project\/(keeplan|p\d+)$/.exec(h || '');

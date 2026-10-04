@@ -597,3 +597,21 @@ html.booted .page--intro .wrap > *:nth-child(n+6){animation-delay:.5s}
 .casesheet .page--flow--inline .kp{align-items:flex-start}
 html.has-sheet{overflow:hidden}
 
+/* ---- the sheet between the two menus: the same width as the page content ---- */
+.casesheet{top:var(--sheet-top,0);bottom:var(--sheet-bottom,0);left:0;right:0;inset:var(--sheet-top,0) 0 var(--sheet-bottom,0) 0;
+  z-index:55;background:color-mix(in srgb,var(--bg) 62%,transparent);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;flex-direction:row;justify-content:center;align-items:stretch;
+  padding:12px 0}
+.casesheet[hidden]{display:none}
+.casesheet__panel{display:flex;flex-direction:column;width:min(var(--maxw),100% - var(--pad) * 2);min-height:0;
+  background:var(--bg);border-radius:var(--drawn-card,18px);overflow:hidden;
+  box-shadow:0 0 0 1px var(--line,rgba(0,0,0,.08)),0 14px 48px rgba(0,0,0,.14)}
+.casesheet__bar{border-radius:0}
+/* a phone: full screen, no margins, over everything */
+html.sheet-full .casesheet{inset:0;z-index:80;padding:0;background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
+@media (max-width:760px){
+  .casesheet{inset:0;z-index:80;padding:0;background:var(--bg)}
+  .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
+}
+
