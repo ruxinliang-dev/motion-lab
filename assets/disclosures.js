@@ -37,7 +37,7 @@
       event.preventDefault();
       var from = details.getBoundingClientRect().height;
       var opacity = details.open ? getComputedStyle(body).opacity : '0';
-      var transform = details.open ? getComputedStyle(body).transform : 'translateY(-10px)';
+      var transform = details.open ? getComputedStyle(body).transform : 'translateY(-4px)';
       expanded = !expanded;
       cancel();
       state();
@@ -52,13 +52,13 @@
       details.open = true;
       details.style.overflow = 'hidden';
       details.style.height = from + 'px';
-      var duration = parseFloat(token(expanded ? '--ui-expand' : '--ui-collapse', expanded ? '420' : '280'));
+      var duration = parseFloat(token(expanded ? '--ui-expand' : '--ui-collapse', expanded ? '240' : '180'));
       heightMotion = details.animate([
         { height: from + 'px' }, { height: to + 'px' }
       ], { duration: duration, easing: token('--e-out', 'ease-out'), fill: 'forwards' });
       contentMotion = body.animate([
         { opacity: opacity, transform: transform },
-        { opacity: expanded ? 1 : 0, transform: expanded ? 'translateY(0)' : 'translateY(-8px)' }
+        { opacity: expanded ? 1 : 0, transform: expanded ? 'translateY(0)' : 'translateY(-4px)' }
       ], { duration: duration * .85, easing: token('--e-out', 'ease-out'), fill: 'forwards' });
       heightMotion.onfinish = finish;
     }

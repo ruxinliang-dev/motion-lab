@@ -98,11 +98,15 @@
     return { x: -c * pageW, y: -r * pageH };
   }
 
+  var keyboardInput = false;
+  document.addEventListener('keydown', function () { keyboardInput = true; }, true);
+  document.addEventListener('pointerdown', function () { keyboardInput = false; }, true);
+
   function move(animate) {
     var o = offsetFor(col, rowOf[col]);
     var t = 'translate3d(' + o.x + 'px,' + o.y + 'px,0)';
-    if (animate && !still()) {
-      canvas.style.transition = 'transform ' + ms('--d-5') + 'ms ' + tok('--e-out');
+    if (animate && !keyboardInput && !still()) {
+      canvas.style.transition = 'transform ' + ms('--ui-page') + 'ms ' + tok('--e-out');
     } else {
       canvas.style.transition = 'none';
     }
@@ -117,13 +121,13 @@
     return [c, r];
   }
 
-  function go(c, r, push) {
+  function go(c, r, push, animate) {
     var cr = clamp(c, r);
     var changed = (cr[0] !== col) || (cr[1] !== rowOf[cr[0]]);
     if (push !== false && changed) saveHistory();
     col = cr[0];
     rowOf[col] = cr[1];
-    move(true);
+    move(animate !== false);
     if (changed) {
       var page = matrix[col][rowOf[col]];
       page.inert = false;
@@ -140,13 +144,13 @@
     return changed;
   }
 
-  function step(dc, dr) {
+  function step(dc, dr, animate) {
     if (dc) {
       var next = col + dc;
       if (next < 0 || next >= matrix.length) return false;
-      return go(next, rowOf[next]);
+      return go(next, rowOf[next], undefined, animate);
     }
-    return go(col, rowOf[col] + dr);
+    return go(col, rowOf[col] + dr, undefined, animate);
   }
 
   function index() {
@@ -537,20 +541,20 @@
       e.preventDefault();
       if (!atEdge(page, dir)) {
         page.scrollTop += dir * (k.indexOf('Page') === 0 ? page.clientHeight * .85 : 48);
-      } else if (!e.repeat) step(0, dir);
+      } else if (!e.repeat) step(0, dir, false);
       return;
     }
     if (e.repeat && /^(ArrowLeft|ArrowRight)$/.test(k)) { e.preventDefault(); return; }
-    if (k === 'ArrowRight') { e.preventDefault(); step(1, 0); }
-    else if (k === 'ArrowLeft') { e.preventDefault(); step(-1, 0); }
-    else if (k === 'Home') { e.preventDefault(); go(0, 0); }
-    else if (k === 'End') { e.preventDefault(); go(matrix.length - 1, 0); }
+    if (k === 'ArrowRight') { e.preventDefault(); step(1, 0, false); }
+    else if (k === 'ArrowLeft') { e.preventDefault(); step(-1, 0, false); }
+    else if (k === 'Home') { e.preventDefault(); go(0, 0, undefined, false); }
+    else if (k === 'End') { e.preventDefault(); go(matrix.length - 1, 0, undefined, false); }
   });
 
   var t0 = null, lockAxis = null, startEdgeDown = false, startEdgeUp = false;
   deck.addEventListener('touchstart', function (e) {
     t0 = null;
-    if (over || e.touches.length !== 1 || e.target.closest('#kp')) return;
+    if (over || e.touches.length !== 1 || e.target.closest('#kp, [data-art="lame"]')) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     lockAxis = null;
     /* Read the edges now, before the finger moves. This is the whole fix: the

@@ -383,42 +383,23 @@
 
   var tokenBox = document.getElementById('tokens');
   if (tokenBox) {
-    easings.forEach(function (pair) {
-      var fn = tok(pair[0]);
-      var card = el('button', 'token');
+    var studyNames = ['Arrive', 'Release', 'Exchange', 'Rebound'];
+    easings.forEach(function (pair, index) {
+      var card = el('button', 'token token--study');
       card.type = 'button';
-      card.setAttribute('aria-label', 'Replay ' + pair[0]);
-
-      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'token__curve');
-      svg.setAttribute('viewBox', '-3 -24 106 148');
-      svg.setAttribute('preserveAspectRatio', 'none');
-      svg.innerHTML =
-        '<rect class="box" x="0" y="0" width="100" height="100"></rect>' +
-        '<path class="crv" d="' + curvePath(samples(fn)) + '"></path>';
-      card.appendChild(svg);
-
-      var rail = el('div', 'token__rail');
-      var ball = el('div', 'token__ball');
-      rail.appendChild(ball);
-      card.appendChild(rail);
-
+      card.dataset.motionStudy = index;
+      card.setAttribute('aria-label', 'Replay ' + studyNames[index] + ', five-second ' + pair[0] + ' study');
+      var stage = el('div', 'token__study');
+      var canvas = el('canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      stage.appendChild(canvas);
+      card.appendChild(stage);
+      card.appendChild(el('div', 'token__study-title', studyNames[index]));
       card.appendChild(el('div', 'token__name', pair[0]));
       card.appendChild(el('div', 'token__use', pair[1]));
-
-      function play() {
-        if (still()) return;
-        var travel = rail.clientWidth - ball.offsetWidth - 6;
-        ball.animate([{ transform: 'translateX(0)' },
-                      { transform: 'translateX(' + travel + 'px)' }],
-          { duration: ms('--d-4'), easing: fn, fill: 'none' });
-      }
-      card.addEventListener('click', play);
-      card.addEventListener('mouseenter', play);
       tokenBox.appendChild(card);
     });
   }
-
   /* --- deep link and year ------------------------------------------------- */
 
   var m = /^#lab\/(.+)$/.exec(location.hash || '');
@@ -863,5 +844,42 @@
     /* a frame after the fonts; the timer is for a tab that is not being drawn, where frames never come */
     requestAnimationFrame(function () { requestAnimationFrame(reveal); });
     setTimeout(reveal, 160);
+  });
+})();
+
+
+/* Project pages: the little nav under the top bar scrolls the page to a section, and marks the one you are reading. These are not
+   routes, so they never touch the address (the hash belongs to the deck). */
+(function () {
+  'use strict';
+  var calm = function () {
+    return document.documentElement.getAttribute('data-motion') === 'off' ||
+           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a[data-scroll]') : null;
+    if (!a) return;
+    e.preventDefault();
+    var id = a.getAttribute('href').slice(1);
+    var target = document.getElementById(id);
+    var page = a.closest('.page');
+    if (!target || !page) return;
+    var nav = page.querySelector('.pnav');
+    var top = target.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - (nav ? nav.offsetHeight + 12 : 12);
+    page.scrollTo({ top: Math.max(0, top), behavior: calm() ? 'auto' : 'smooth' });
+  });
+  function mark(page) {
+    var links = [].slice.call(page.querySelectorAll('.pnav a[data-scroll]'));
+    if (!links.length) return;
+    var edge = page.getBoundingClientRect().top + page.clientHeight * 0.32, cur = links[0];
+    links.forEach(function (l) {
+      var t = document.getElementById(l.getAttribute('href').slice(1));
+      if (t && t.getBoundingClientRect().top <= edge) cur = l;
+    });
+    links.forEach(function (l) { l.classList.toggle('on', l === cur); });
+  }
+  [].slice.call(document.querySelectorAll('.page--case')).forEach(function (page) {
+    page.addEventListener('scroll', function () { mark(page); }, { passive: true });
+    mark(page);
   });
 })();

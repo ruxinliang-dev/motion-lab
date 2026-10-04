@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ruxin Liang — Motion Lab</title>
-<meta name="description" content="A visual system drawn from formulas, eight interaction studies, and KeePlan: thirteen screens you can walk through. Everything is drawn in code and runs live in the browser.">
+<meta name="description" content="A visual system drawn from formulas, eight interaction studies, and KeePlan: a live thirteen-screen prototype. Everything is drawn in code and runs live in the browser.">
 <link rel="icon" href="assets/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <!-- Held invisible until the fonts and the first mount are in, then faded in once:
@@ -23,10 +23,10 @@
      IoU .854; Inter Tight 800 was .853, and the genre decided it) -->
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=227">
+<link rel="stylesheet" href="assets/site.css?v=228">
 <link rel="stylesheet" href="assets/labs.css?v=197">
 <link rel="stylesheet" href="assets/keeplan.css?v=212">
-<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=27">
+<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=28">
 <script src="assets/theme.js?v=200"></script>
 <script src="assets/type.js?v=197"></script>
 </head>
@@ -57,15 +57,15 @@
           <h1>Motion and artwork, <em>from the same math.</em></h1>
           <p class="lead">
             No image files. Every tile is a formula, every screen is built while
-            you watch. Five chapters, thirteen pages.
+            you watch. Five chapters, twelve pages.
           </p>
 
           <nav class="guide" aria-label="What each chapter studies">
-            <a href="#/system"><b>System</b><span>Six tiles, six equations, and the
-              durations everything else obeys.</span></a>
+            <a href="#/system"><b>System</b><span>Four tiles, four equations, and the
+              shared motion language behind the interface.</span></a>
             <a href="#/experiments"><b>Experiments</b><span>Eight studies, each one
               arguing about a single number.</span></a>
-            <a href="#/project"><b>Project</b><span>KeePlan: research, design decisions and a live product prototype.</span></a>
+            <a href="#/project"><b>Project</b><span>Interactive projects, each one page: KeePlan first.</span></a>
             <a href="#/about"><b>About</b><span>Who is doing this, and how.</span></a>
           </nav>
 
@@ -105,7 +105,7 @@
             <p class="doodle__t">
               <b>you are here.</b>
               Right and left change chapter, up and down turn the page.
-              <i>index</i> opens all thirteen at once.
+              <i>index</i> opens all twelve at once.
             </p>
           </div>
         </div>
@@ -119,9 +119,9 @@
           <div class="section__head">
             <h2>Visual system</h2>
             <p>
-              Six tiles, six equations. Colour is interpolated in linear light,
+              Four tiles, four equations. Colour is interpolated in linear light,
               so a ramp keeps its weight through the middle instead of going
-              grey. Hover a tile to read its equation.
+              grey. Explore a tile to see its rule and response.
             </p>
           </div>
           <div class="bento" id="bento"></div>
@@ -132,17 +132,19 @@
           <div class="section__head">
             <h2>Motion tokens</h2>
             <p>
-              Four curves and five durations. Everything on this site picks from
-              this list, so two screens can never disagree about what fast
-              means. Hover a card to replay it, or press the first one.
+              Four timing curves, four five-second motion studies.
+              Tap a study to replay its loop.
             </p>
           </div>
           <div class="tokens" id="tokens">
-            <div class="token token--stage" data-art="pulse">
-              <span class="token__name token__name--over">pulse</span>
-              <span class="token__use token__use--over">press it</span>
-            </div>
           </div>
+          <dl class="motion-budget" aria-label="Interface timing">
+            <div><dt>Feedback</dt><dd>140ms</dd></div>
+            <div><dt>Control movement</dt><dd>220ms</dd></div>
+            <div><dt>Page / expand</dt><dd>240ms</dd></div>
+            <div><dt>Collapse</dt><dd>180ms</dd></div>
+            <div><dt>Keyboard navigation</dt><dd>Instant</dd></div>
+          </dl>
         </div>
       </article>
       <article class="page">
@@ -150,7 +152,7 @@
           <div class="section__head">
             <h2>A shape that keeps what you did to it</h2>
             <p>
-              Move to shape. Leave to keep.
+              <span class="input-hint--mouse">Move to shape. Leave to keep.</span><span class="input-hint--touch">Drag to shape. Release to keep.</span>
             </p>
           </div>
           <div class="study">
@@ -158,7 +160,8 @@
             <div class="study__read">
               <p class="study__intro">One shape, five echoes. Find a composition worth keeping.</p>
               <p><b>Left / right</b> changes the silhouette.<br><b>Up / down</b> adjusts the spacing.</p>
-              <p>Leave to pause. Double-click to reset.</p>
+              <p><span class="input-hint--mouse">Leave to pause. Double-click to reset.</span><span class="input-hint--touch">Drag to shape. Lift your finger to pause.</span></p>
+              <button type="button" class="study__reset" data-shape-reset>Reset shape</button>
               <details class="case-details"><summary><svg class="case-details__arrow" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M13.1 4.1C11.9 9.3 15.4 14.3 13.5 23.1M5.7 15.3C8.2 17.1 10.8 20.2 13.5 23.1C16.8 20.8 19.2 17.9 22.1 15.8"/></svg><span>How it works</span></summary><div class="case-details__body">
               <p>
                 All five rings are one equation. The exponent <b>n</b> is the only
@@ -211,9 +214,57 @@
       </article>
     </section>
 
-    <!-- project: KeePlan, cover first ---------------------------------- -->
+    <!-- project: an index, then one scrolling page per project ----------- -->
     <section class="chapter" data-chapter="project">
-      <article class="page page--cover page--doc">
+      <article class="page page--top page--doc page--projects">
+        <div class="wrap">
+        <section class="section" id="projects" data-accent="azure">
+          <div class="section__head" data-kicker="Case studies">
+            <h2>Projects</h2>
+            <p>Interactive projects, each one a single page you scroll. Pick one.</p>
+          </div>
+          <div class="pcards">
+            <a class="pcard" href="#/project/2">
+              <span class="pcard__art pcard__art--keeplan" aria-hidden="true"><i></i></span>
+              <span class="pcard__body">
+                <span class="pcard__n">01</span>
+                <span class="pcard__t">KeePlan</span>
+                <span class="pcard__d">A planner for people who know what to do and cannot start. Research, decisions and a live thirteen-screen prototype.</span>
+                <span class="pcard__tags"><b>Prototype</b><b>Research</b><b>Mobile</b></span>
+              </span>
+            </a>
+            <a class="pcard pcard--soon" href="#/project/3">
+              <span class="pcard__art" aria-hidden="true"><span>+</span></span>
+              <span class="pcard__body">
+                <span class="pcard__n">02</span>
+                <span class="pcard__t">Project two</span>
+                <span class="pcard__d">Coming soon. One line on what it is.</span>
+                <span class="pcard__tags"><b>Prototype</b></span>
+              </span>
+            </a>
+            <a class="pcard pcard--soon" href="#/project/4">
+              <span class="pcard__art" aria-hidden="true"><span>+</span></span>
+              <span class="pcard__body">
+                <span class="pcard__n">03</span>
+                <span class="pcard__t">Project three</span>
+                <span class="pcard__d">Coming soon. One line on what it is.</span>
+                <span class="pcard__tags"><b>Prototype</b></span>
+              </span>
+            </a>
+            <a class="pcard pcard--soon" href="#/project/5">
+              <span class="pcard__art" aria-hidden="true"><span>+</span></span>
+              <span class="pcard__body">
+                <span class="pcard__n">04</span>
+                <span class="pcard__t">Project four</span>
+                <span class="pcard__d">Coming soon. One line on what it is.</span>
+                <span class="pcard__tags"><b>Prototype</b></span>
+              </span>
+            </a>
+          </div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc page--case" data-project="keeplan">
         <div class="wrap">
         <section class="phero">
           <span class="eyebrow">Human-centered project · KeePlan</span>
@@ -244,10 +295,8 @@
             </p>
           </div>
         </section>
-        </div>
-      </article>
-      <article class="page page--flow page--doc">
-        <div class="wrap">
+        <nav class="pnav" aria-label="On this page"><a href="#flow" data-scroll>Prototype</a><a href="#question" data-scroll>Question</a><a href="#research" data-scroll>Research</a><a href="#decision" data-scroll>Decision</a><a href="#people" data-scroll>Personas</a><a href="#design" data-scroll>Design</a><a href="#validation" data-scroll>Validation</a><a href="#motion-spec" data-scroll>Motion</a></nav>
+        <div class="page--flow page--flow--inline">
         <section class="section" id="flow" data-accent="azure">
           <div class="section__head" data-kicker="Hi-fi prototype">
             <h2>The flow</h2>
@@ -259,9 +308,6 @@
           <div class="kp" id="kp"></div>
         </section>
         </div>
-      </article>
-      <article class="page page--top page--doc">
-        <div class="wrap">
         <section class="section" id="question" data-accent="yellow">
           <div class="section__head" data-kicker="Needfinding">
             <h2>The design question</h2>
@@ -330,10 +376,6 @@
             </div>
           </div>
         </section>
-        </div>
-      </article>
-      <article class="page page--top page--doc">
-        <div class="wrap">
         <section class="section" id="research" data-accent="azure">
           <div class="section__head" data-kicker="Interviews and surveys">
             <h2>What the research found</h2>
@@ -395,10 +437,6 @@
             </div>
           </div>
         </section>
-        </div>
-      </article>
-      <article class="page page--top page--doc">
-        <div class="wrap">
         <section class="section" id="decision" data-accent="orange">
           <div class="section__head" data-kicker="Point of view">
             <h2>The decision the project turned on</h2>
@@ -539,10 +577,6 @@
             </div>
           </div>
         </section>
-        </div>
-      </article>
-      <article class="page page--top page--doc">
-        <div class="wrap">
         <section class="section" id="people" data-accent="yellow">
           <div class="section__head" data-kicker="Personas">
             <h2>Personas</h2>
@@ -658,10 +692,6 @@
             </div>
           </div>
         </section>
-        </div>
-      </article>
-      <article class="page page--top page--doc">
-        <div class="wrap">
         <section class="section" id="design" data-accent="orange">
           <div class="section__head" data-kicker="Design rationale">
             <h2>Design decisions</h2>
@@ -813,6 +843,177 @@
         </section>
         </div>
       </article>
+      <article class="page page--top page--doc page--case page--placeholder" data-project="p2">
+        <div class="wrap">
+        <section class="phero">
+          <span class="eyebrow">Interactive project &middot; 02</span>
+          <h1>Project two, <em>coming soon.</em></h1>
+          <p>
+            One or two sentences on what this project is, who it is for and what you can do in the prototype below.
+            Replace this paragraph, the facts and the five sections underneath; the layout stays.
+          </p>
+          <dl class="facts">
+            <div><dt>Role</dt><dd>Your role on the project</dd></div>
+            <div><dt>Year</dt><dd>2026</dd></div>
+            <div><dt>Type</dt><dd>Interactive prototype</dd></div>
+            <div><dt>Tools</dt><dd>What it was built with</dd></div>
+          </dl>
+        </section>
+        <nav class="pnav" aria-label="On this page"><a href="#p2-proto" data-scroll>Prototype</a><a href="#p2-problem" data-scroll>Problem</a><a href="#p2-process" data-scroll>Process</a><a href="#p2-decision" data-scroll>Decision</a><a href="#p2-outcome" data-scroll>Outcome</a></nav>
+        <section class="section" id="p2-proto" data-accent="azure">
+          <div class="section__head" data-kicker="Live prototype">
+            <h2>The prototype</h2>
+            <p>The interactive piece goes in this frame: an embedded build, a canvas, or a set of live screens.</p>
+          </div>
+          <div class="proto-slot" role="img" aria-label="Placeholder for the interactive prototype">
+            <span class="proto-slot__plus" aria-hidden="true">+</span>
+            <span class="proto-slot__t">Interactive prototype goes here</span>
+          </div>
+        </section>
+        <section class="section" id="p2-problem" data-accent="yellow">
+          <div class="section__head" data-kicker="Needfinding">
+            <h2>The problem</h2>
+            <p>Who has it, and what they do about it today.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Two or three short paragraphs.</p></div>
+        </section>
+        <section class="section" id="p2-process" data-accent="azure">
+          <div class="section__head" data-kicker="What I did">
+            <h2>The process</h2>
+            <p>Research, sketches, tests: only the steps that changed the outcome.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Add figures or a short list of steps.</p></div>
+        </section>
+        <section class="section" id="p2-decision" data-accent="orange">
+          <div class="section__head" data-kicker="Key decision">
+            <h2>The decision it turned on</h2>
+            <p>One or two decisions, and what was given up.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        <section class="section" id="p2-outcome" data-accent="yellow">
+          <div class="section__head" data-kicker="Result">
+            <h2>The outcome</h2>
+            <p>What changed, in numbers if there are any.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc page--case page--placeholder" data-project="p3">
+        <div class="wrap">
+        <section class="phero">
+          <span class="eyebrow">Interactive project &middot; 03</span>
+          <h1>Project three, <em>coming soon.</em></h1>
+          <p>
+            One or two sentences on what this project is, who it is for and what you can do in the prototype below.
+            Replace this paragraph, the facts and the five sections underneath; the layout stays.
+          </p>
+          <dl class="facts">
+            <div><dt>Role</dt><dd>Your role on the project</dd></div>
+            <div><dt>Year</dt><dd>2026</dd></div>
+            <div><dt>Type</dt><dd>Interactive prototype</dd></div>
+            <div><dt>Tools</dt><dd>What it was built with</dd></div>
+          </dl>
+        </section>
+        <nav class="pnav" aria-label="On this page"><a href="#p3-proto" data-scroll>Prototype</a><a href="#p3-problem" data-scroll>Problem</a><a href="#p3-process" data-scroll>Process</a><a href="#p3-decision" data-scroll>Decision</a><a href="#p3-outcome" data-scroll>Outcome</a></nav>
+        <section class="section" id="p3-proto" data-accent="azure">
+          <div class="section__head" data-kicker="Live prototype">
+            <h2>The prototype</h2>
+            <p>The interactive piece goes in this frame: an embedded build, a canvas, or a set of live screens.</p>
+          </div>
+          <div class="proto-slot" role="img" aria-label="Placeholder for the interactive prototype">
+            <span class="proto-slot__plus" aria-hidden="true">+</span>
+            <span class="proto-slot__t">Interactive prototype goes here</span>
+          </div>
+        </section>
+        <section class="section" id="p3-problem" data-accent="yellow">
+          <div class="section__head" data-kicker="Needfinding">
+            <h2>The problem</h2>
+            <p>Who has it, and what they do about it today.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Two or three short paragraphs.</p></div>
+        </section>
+        <section class="section" id="p3-process" data-accent="azure">
+          <div class="section__head" data-kicker="What I did">
+            <h2>The process</h2>
+            <p>Research, sketches, tests: only the steps that changed the outcome.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Add figures or a short list of steps.</p></div>
+        </section>
+        <section class="section" id="p3-decision" data-accent="orange">
+          <div class="section__head" data-kicker="Key decision">
+            <h2>The decision it turned on</h2>
+            <p>One or two decisions, and what was given up.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        <section class="section" id="p3-outcome" data-accent="yellow">
+          <div class="section__head" data-kicker="Result">
+            <h2>The outcome</h2>
+            <p>What changed, in numbers if there are any.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        </div>
+      </article>
+      <article class="page page--top page--doc page--case page--placeholder" data-project="p4">
+        <div class="wrap">
+        <section class="phero">
+          <span class="eyebrow">Interactive project &middot; 04</span>
+          <h1>Project four, <em>coming soon.</em></h1>
+          <p>
+            One or two sentences on what this project is, who it is for and what you can do in the prototype below.
+            Replace this paragraph, the facts and the five sections underneath; the layout stays.
+          </p>
+          <dl class="facts">
+            <div><dt>Role</dt><dd>Your role on the project</dd></div>
+            <div><dt>Year</dt><dd>2026</dd></div>
+            <div><dt>Type</dt><dd>Interactive prototype</dd></div>
+            <div><dt>Tools</dt><dd>What it was built with</dd></div>
+          </dl>
+        </section>
+        <nav class="pnav" aria-label="On this page"><a href="#p4-proto" data-scroll>Prototype</a><a href="#p4-problem" data-scroll>Problem</a><a href="#p4-process" data-scroll>Process</a><a href="#p4-decision" data-scroll>Decision</a><a href="#p4-outcome" data-scroll>Outcome</a></nav>
+        <section class="section" id="p4-proto" data-accent="azure">
+          <div class="section__head" data-kicker="Live prototype">
+            <h2>The prototype</h2>
+            <p>The interactive piece goes in this frame: an embedded build, a canvas, or a set of live screens.</p>
+          </div>
+          <div class="proto-slot" role="img" aria-label="Placeholder for the interactive prototype">
+            <span class="proto-slot__plus" aria-hidden="true">+</span>
+            <span class="proto-slot__t">Interactive prototype goes here</span>
+          </div>
+        </section>
+        <section class="section" id="p4-problem" data-accent="yellow">
+          <div class="section__head" data-kicker="Needfinding">
+            <h2>The problem</h2>
+            <p>Who has it, and what they do about it today.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Two or three short paragraphs.</p></div>
+        </section>
+        <section class="section" id="p4-process" data-accent="azure">
+          <div class="section__head" data-kicker="What I did">
+            <h2>The process</h2>
+            <p>Research, sketches, tests: only the steps that changed the outcome.</p>
+          </div>
+          <div class="prose"><p>Placeholder. Add figures or a short list of steps.</p></div>
+        </section>
+        <section class="section" id="p4-decision" data-accent="orange">
+          <div class="section__head" data-kicker="Key decision">
+            <h2>The decision it turned on</h2>
+            <p>One or two decisions, and what was given up.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        <section class="section" id="p4-outcome" data-accent="yellow">
+          <div class="section__head" data-kicker="Result">
+            <h2>The outcome</h2>
+            <p>What changed, in numbers if there are any.</p>
+          </div>
+          <div class="prose"><p>Placeholder.</p></div>
+        </section>
+        </div>
+      </article>
     </section>
 
     <!-- about ---------------------------------------------------------- -->
@@ -860,11 +1061,13 @@
   </div>
 </main>
 
-<script src="assets/art.js?v=254"></script>
+<script src="assets/art.js?v=258"></script>
 <script src="assets/labs.js?v=197"></script>
-<script src="assets/site.js?v=213"></script>
+<script src="assets/motion-studies.js?v=1"></script>
+<script src="assets/site.js?v=215"></script>
+<script src="assets/motion-token-cards.js?v=1"></script>
 <script src="assets/keeplan.js?v=210"></script>
-<script src="assets/pager.js?v=209"></script>
-<script src="assets/disclosures.js?v=200"></script>
+<script src="assets/pager.js?v=210"></script>
+<script src="assets/disclosures.js?v=201"></script>
 </body>
 </html>

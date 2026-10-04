@@ -72,7 +72,7 @@
 
   /* A canvas that keeps itself the size of its host, runs a draw loop while
      it is on screen, and draws a single frame when motion is off. */
-  function scene(host, draw) {
+  function scene(host, draw, demand) {
     var cv = document.createElement('canvas');
     var ctx = cv.getContext('2d');
     host.appendChild(cv);
@@ -94,8 +94,9 @@
 
     function frame(now) {
       if (still()) { running = false; raf = 0; return; }
-      draw(ctx, w, h, (now - t0) / 1000, fresh);
+      var more = draw(ctx, w, h, (now - t0) / 1000, fresh);
       fresh = false;
+      if (demand && more === false) running = false;
       raf = running ? requestAnimationFrame(frame) : 0;
     }
     function start() {
@@ -110,9 +111,15 @@
        frame on screen; turning it back on picks the loop up again. */
     var onMotion = function () { if (still()) stop(); else start(); };
     document.addEventListener('motionchange', onMotion);
+    document.addEventListener('themechange', redraw);
 
     size();
-    var ro = window.ResizeObserver ? new ResizeObserver(size) : null;
+    function resized() {
+      size();
+      // Resizing clears a canvas even when its animation is paused.
+      if (still() || demand) redraw();
+    }
+    var ro = window.ResizeObserver ? new ResizeObserver(resized) : null;
     if (ro) ro.observe(host);
 
     var io = window.IntersectionObserver ? new IntersectionObserver(function (es) {
@@ -123,15 +130,19 @@
     function teardown() {
       stop();
       document.removeEventListener('motionchange', onMotion);
+      document.removeEventListener('themechange', redraw);
       if (ro) ro.disconnect();
       if (io) io.disconnect();
     }
     /* With motion off there is no loop, so a piece that answers the pointer
        has no way to show the answer. This draws exactly one frame. */
-    teardown.redraw = function () {
+    function redraw() {
       if (!w) size();
-      draw(ctx, w, h, (performance.now() - t0) / 1000, true);
-    };
+      var more = draw(ctx, w, h, (performance.now() - t0) / 1000, true);
+      fresh = false;
+      if (demand && more !== false && !still()) start();
+    }
+    teardown.redraw = redraw;
     return teardown;
   }
 
@@ -901,7 +912,7 @@
     id: 'icon',
     label: 'Icon',
     span: '',
-    math: 'Hover to grow · leave to pause',
+    math: 'Hover or hold to grow · release to pause',
     mount: function (host) {
       // Fresh procedural targets; interpolation freezes exactly on pointer leave.
       var from = sdfOf(petalMask(6,.48,.58,10.6,2.4)), to = from;
@@ -1343,9 +1354,10 @@
         nT=Math.max(1.6,Math.min(8,nT+(e.clientX-lastX)/r.width*7));
         pT=Math.max(.58,Math.min(1.12,pT+(e.clientY-lastY)/r.height*.8));
         lastX=e.clientX;lastY=e.clientY;
-        if(still()&&api){n=nT;p=pT;api.redraw();}
+        if(api){if(still()){n=nT;p=pT;}api.redraw();}
       }
       function leave(){active=false;nT=n;pT=p;lastX=lastY=null;}
+      function release(e){if(e.pointerType !== 'mouse')leave();}
       function reset(){n=nT=4;p=pT=.82;if(api)api.redraw();}
       function key(e){
         if(e.key.toLowerCase()==='r'){e.preventDefault();reset();return;}
@@ -1358,7 +1370,10 @@
       host.addEventListener('pointermove',move);
       host.addEventListener('pointerleave',leave);
       host.addEventListener('pointercancel',leave);
+      host.addEventListener('pointerup',release);
       host.addEventListener('dblclick',reset);
+      var resetButton=host.parentNode.querySelector('[data-shape-reset]');
+      if(resetButton)resetButton.addEventListener('click',reset);
       host.addEventListener('keydown',key);
 
       /* Grain has to be the same grain every frame or the whole piece boils.
@@ -1420,14 +1435,17 @@
         var marker=point(-Math.PI/4,1);
         ctx.fillStyle=tok('--ink');ctx.beginPath();
         ctx.arc(marker[0],marker[1],Math.max(5,Math.min(w,h)*.012),0,Math.PI*2);ctx.fill();
-      });
+        return active && (n !== nT || p !== pT);
+      }, true);
 
       return function () {
         host.removeEventListener('pointerenter',enter);
         host.removeEventListener('pointermove',move);
         host.removeEventListener('pointerleave',leave);
         host.removeEventListener('pointercancel',leave);
+        host.removeEventListener('pointerup',release);
         host.removeEventListener('dblclick',reset);
+        if(resetButton)resetButton.removeEventListener('click',reset);
         host.removeEventListener('keydown',key);
         api();
       };
@@ -1579,7 +1597,8 @@
     }
   };
 
-  window.ART = [curves, ramp, star, path, lattice, field];
+  window.ART = [curves, ramp, star, lattice];
   /* Pieces that get a page of their own rather than a cell in the bento. */
   window.ART_SOLO = [lame, pulse];
 })();
+
