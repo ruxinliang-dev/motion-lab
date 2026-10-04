@@ -528,6 +528,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.documentElement.classList.contains('has-sheet')) return;   /* a project is open over the deck */
     var t = e.target;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
     var k = e.key;

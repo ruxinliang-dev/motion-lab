@@ -569,3 +569,31 @@ html.booted .page--intro .wrap > *:nth-child(n+6){animation-delay:.5s}
   border:1.5px dashed var(--ink-3);border-radius:var(--drawn-card,18px);color:var(--ink-3)}
 .proto-slot__plus{font:300 56px/1 var(--mono)}
 .proto-slot__t{font:500 13px/1.3 var(--mono)}
+
+/* ---- a project opens as a sheet over the deck ---- */
+.casesheets{position:relative;z-index:80}
+.casesheet{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg);
+  animation:sheetIn .34s cubic-bezier(.2,.7,.2,1) both}
+.casesheet[hidden]{display:none}
+@keyframes sheetIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.casesheet{animation:none}}
+:root[data-motion="off"] .casesheet{animation:none}
+.casesheet__bar{flex:none;display:flex;align-items:center;gap:14px;padding:10px clamp(14px,3vw,28px);
+  background:var(--bg);box-shadow:0 1px 0 var(--line,rgba(0,0,0,.08))}
+.casesheet__close{display:inline-flex;align-items:center;gap:8px;padding:8px 14px 8px 10px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--surface);color:var(--ink);font:500 13px/1 var(--mono);transition:background var(--d-1,.18s) ease}
+.casesheet__close:hover,.casesheet__close:focus-visible{background:var(--tint)}
+.casesheet__close svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.casesheet__t{font:600 13px/1 var(--mono);color:var(--ink-2)}
+.casesheet__scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.casesheet .page{position:relative;left:auto;top:auto;width:auto;height:auto;overflow:visible;transform:none;
+  padding:clamp(18px,3vh,40px) 0 clamp(70px,9vh,110px)}
+.casesheet .page > .wrap{min-height:0}
+/* KeePlan's phone keeps its designed size (324px wide) instead of being squeezed to fit a height: it had been shrunk and its screens
+   no longer fitted. The sheet scrolls, so the page is simply as tall as the phone. */
+.casesheet .page--flow--inline{height:auto;min-height:0;display:block}
+.casesheet .page--flow--inline .kp-phone{height:auto !important;max-height:none !important;width:min(324px,80vw) !important;aspect-ratio:9/19.3}
+.casesheet .page--flow--inline .flow,.casesheet .page--flow--inline .flow__list{max-height:none;overflow:visible}
+.casesheet .page--flow--inline .kp{align-items:flex-start}
+html.has-sheet{overflow:hidden}
+

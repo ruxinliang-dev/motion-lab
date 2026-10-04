@@ -26,7 +26,7 @@
 <link rel="stylesheet" href="assets/site.css?v=228">
 <link rel="stylesheet" href="assets/labs.css?v=197">
 <link rel="stylesheet" href="assets/keeplan.css?v=212">
-<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=28">
+<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=29">
 <script src="assets/theme.js?v=200"></script>
 <script src="assets/type.js?v=197"></script>
 </head>
@@ -57,7 +57,7 @@
           <h1>Motion and artwork, <em>from the same math.</em></h1>
           <p class="lead">
             No image files. Every tile is a formula, every screen is built while
-            you watch. Five chapters, twelve pages.
+            you watch. Five chapters, eight pages.
           </p>
 
           <nav class="guide" aria-label="What each chapter studies">
@@ -105,7 +105,7 @@
             <p class="doodle__t">
               <b>you are here.</b>
               Right and left change chapter, up and down turn the page.
-              <i>index</i> opens all twelve at once.
+              <i>index</i> opens all eight at once.
             </p>
           </div>
         </div>
@@ -221,10 +221,10 @@
         <section class="section" id="projects" data-accent="azure">
           <div class="section__head" data-kicker="Case studies">
             <h2>Projects</h2>
-            <p>Interactive projects, each one a single page you scroll. Pick one.</p>
+            <p>Interactive projects. Pick one to open it; close it whenever you like.</p>
           </div>
           <div class="pcards">
-            <a class="pcard" href="#/project/2">
+            <a class="pcard" href="#/project/keeplan" data-case="keeplan">
               <span class="pcard__art pcard__art--keeplan" aria-hidden="true"><i></i></span>
               <span class="pcard__body">
                 <span class="pcard__n">01</span>
@@ -233,7 +233,7 @@
                 <span class="pcard__tags"><b>Prototype</b><b>Research</b><b>Mobile</b></span>
               </span>
             </a>
-            <a class="pcard pcard--soon" href="#/project/3">
+            <a class="pcard pcard--soon" href="#/project/p2" data-case="p2">
               <span class="pcard__art" aria-hidden="true"><span>+</span></span>
               <span class="pcard__body">
                 <span class="pcard__n">02</span>
@@ -242,7 +242,7 @@
                 <span class="pcard__tags"><b>Prototype</b></span>
               </span>
             </a>
-            <a class="pcard pcard--soon" href="#/project/4">
+            <a class="pcard pcard--soon" href="#/project/p3" data-case="p3">
               <span class="pcard__art" aria-hidden="true"><span>+</span></span>
               <span class="pcard__body">
                 <span class="pcard__n">03</span>
@@ -251,7 +251,7 @@
                 <span class="pcard__tags"><b>Prototype</b></span>
               </span>
             </a>
-            <a class="pcard pcard--soon" href="#/project/5">
+            <a class="pcard pcard--soon" href="#/project/p4" data-case="p4">
               <span class="pcard__art" aria-hidden="true"><span>+</span></span>
               <span class="pcard__body">
                 <span class="pcard__n">04</span>
@@ -264,7 +264,66 @@
         </section>
         </div>
       </article>
-      <article class="page page--top page--doc page--case" data-project="keeplan">
+
+
+
+
+    </section>
+
+    <!-- about ---------------------------------------------------------- -->
+    <section class="chapter" data-chapter="about">
+      <article class="page">
+        <div class="wrap">
+          <div class="section__head"><h2>About</h2></div>
+          <div class="about">
+            <p>
+              I am Ruxin Liang. My work is in 3D; I explore interface design independently.
+              This lab collects the visual and interaction questions I am working through.
+            </p>
+            <p>
+              I start with a formula, choose its parameters and adjust them until the result
+              feels right. I build with Claude's help; choosing the direction and refining
+              the behaviour are my design work.
+            </p>
+            <p>
+              The artwork is generated from formulas, the KeePlan prototype runs in the browser,
+              and its icons are SVG paths. Experiment 03 also powers the expanding detail
+              panels. The motion control follows your system preference and lets you
+              pause animation.
+            </p>
+            <div class="links">
+              <a class="btn" href="https://www.behance.net/ruxin-liang" target="_blank" rel="noopener">
+                Portfolio on Behance
+              </a>
+              <a class="btn btn--ghost" href="https://ruxin.art" target="_blank" rel="noopener">
+                ruxin.art
+              </a>
+              <a class="btn btn--ghost" href="https://www.linkedin.com/in/ruxinliang" target="_blank" rel="noopener">
+                LinkedIn
+              </a>
+              <a class="btn btn--ghost" href="https://github.com/ruxinliang-dev" target="_blank" rel="noopener">
+                GitHub
+              </a>
+            </div>
+            <div class="tally" id="tally" aria-label="What the site is made of"></div>
+
+          </div>
+        </div>
+      </article>
+    </section>
+
+  </div>
+</main>
+
+    <!-- project pages: they open over the deck, so a long one can be closed at any moment -->
+    <div class="casesheets">
+      <div class="casesheet" id="case-keeplan" role="dialog" aria-modal="true" aria-label="KeePlan" hidden>
+        <div class="casesheet__bar">
+          <button class="casesheet__close" type="button" aria-label="Close KeePlan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>Close</span></button>
+          <span class="casesheet__t">KeePlan</span>
+        </div>
+        <div class="casesheet__scroll">
+      <article class="page page--top page--doc page--case page--sheet" data-project="keeplan">
         <div class="wrap">
         <section class="phero">
           <span class="eyebrow">Human-centered project · KeePlan</span>
@@ -843,7 +902,15 @@
         </section>
         </div>
       </article>
-      <article class="page page--top page--doc page--case page--placeholder" data-project="p2">
+        </div>
+      </div>
+      <div class="casesheet" id="case-p2" role="dialog" aria-modal="true" aria-label="Project two" hidden>
+        <div class="casesheet__bar">
+          <button class="casesheet__close" type="button" aria-label="Close Project two"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>Close</span></button>
+          <span class="casesheet__t">Project two</span>
+        </div>
+        <div class="casesheet__scroll">
+      <article class="page page--top page--doc page--case page--sheet page--placeholder" data-project="p2">
         <div class="wrap">
         <section class="phero">
           <span class="eyebrow">Interactive project &middot; 02</span>
@@ -900,7 +967,15 @@
         </section>
         </div>
       </article>
-      <article class="page page--top page--doc page--case page--placeholder" data-project="p3">
+        </div>
+      </div>
+      <div class="casesheet" id="case-p3" role="dialog" aria-modal="true" aria-label="Project three" hidden>
+        <div class="casesheet__bar">
+          <button class="casesheet__close" type="button" aria-label="Close Project three"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>Close</span></button>
+          <span class="casesheet__t">Project three</span>
+        </div>
+        <div class="casesheet__scroll">
+      <article class="page page--top page--doc page--case page--sheet page--placeholder" data-project="p3">
         <div class="wrap">
         <section class="phero">
           <span class="eyebrow">Interactive project &middot; 03</span>
@@ -957,7 +1032,15 @@
         </section>
         </div>
       </article>
-      <article class="page page--top page--doc page--case page--placeholder" data-project="p4">
+        </div>
+      </div>
+      <div class="casesheet" id="case-p4" role="dialog" aria-modal="true" aria-label="Project four" hidden>
+        <div class="casesheet__bar">
+          <button class="casesheet__close" type="button" aria-label="Close Project four"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>Close</span></button>
+          <span class="casesheet__t">Project four</span>
+        </div>
+        <div class="casesheet__scroll">
+      <article class="page page--top page--doc page--case page--sheet page--placeholder" data-project="p4">
         <div class="wrap">
         <section class="phero">
           <span class="eyebrow">Interactive project &middot; 04</span>
@@ -1014,57 +1097,13 @@
         </section>
         </div>
       </article>
-    </section>
-
-    <!-- about ---------------------------------------------------------- -->
-    <section class="chapter" data-chapter="about">
-      <article class="page">
-        <div class="wrap">
-          <div class="section__head"><h2>About</h2></div>
-          <div class="about">
-            <p>
-              I am Ruxin Liang. My work is in 3D; I explore interface design independently.
-              This lab collects the visual and interaction questions I am working through.
-            </p>
-            <p>
-              I start with a formula, choose its parameters and adjust them until the result
-              feels right. I build with Claude's help; choosing the direction and refining
-              the behaviour are my design work.
-            </p>
-            <p>
-              The artwork is generated from formulas, the KeePlan prototype runs in the browser,
-              and its icons are SVG paths. Experiment 03 also powers the expanding detail
-              panels. The motion control follows your system preference and lets you
-              pause animation.
-            </p>
-            <div class="links">
-              <a class="btn" href="https://www.behance.net/ruxin-liang" target="_blank" rel="noopener">
-                Portfolio on Behance
-              </a>
-              <a class="btn btn--ghost" href="https://ruxin.art" target="_blank" rel="noopener">
-                ruxin.art
-              </a>
-              <a class="btn btn--ghost" href="https://www.linkedin.com/in/ruxinliang" target="_blank" rel="noopener">
-                LinkedIn
-              </a>
-              <a class="btn btn--ghost" href="https://github.com/ruxinliang-dev" target="_blank" rel="noopener">
-                GitHub
-              </a>
-            </div>
-            <div class="tally" id="tally" aria-label="What the site is made of"></div>
-
-          </div>
         </div>
-      </article>
-    </section>
-
-  </div>
-</main>
-
+      </div>
+    </div>
 <script src="assets/art.js?v=258"></script>
 <script src="assets/labs.js?v=197"></script>
 <script src="assets/motion-studies.js?v=1"></script>
-<script src="assets/site.js?v=215"></script>
+<script src="assets/site.js?v=216"></script>
 <script src="assets/motion-token-cards.js?v=1"></script>
 <script src="assets/keeplan.js?v=210"></script>
 <script src="assets/pager.js?v=210"></script>

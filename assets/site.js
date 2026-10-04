@@ -847,39 +847,102 @@
   });
 })();
 
-
-/* Project pages: the little nav under the top bar scrolls the page to a section, and marks the one you are reading. These are not
-   routes, so they never touch the address (the hash belongs to the deck). */
+/* Project pages open over the deck as a sheet: a long page can be closed at any moment (the Close button, Esc, or the browser's
+   Back), and the address becomes #/project/<name> so a project can be linked to. The little nav under the bar scrolls the sheet
+   to a section and marks the one being read. The deck behind is inert while a sheet is open. */
 (function () {
   'use strict';
+  var html = document.documentElement;
+  var deckEl = document.getElementById('deck');
+  var sheets = {};
+  [].slice.call(document.querySelectorAll('.casesheet')).forEach(function (el) { sheets[el.id.replace('case-', '')] = el; });
+  var openId = null, opener = null;
+  var initial = location.hash;           /* captured before the deck rewrites the address */
   var calm = function () {
-    return document.documentElement.getAttribute('data-motion') === 'off' ||
-           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return html.getAttribute('data-motion') === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   };
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest ? e.target.closest('a[data-scroll]') : null;
-    if (!a) return;
-    e.preventDefault();
-    var id = a.getAttribute('href').slice(1);
-    var target = document.getElementById(id);
-    var page = a.closest('.page');
-    if (!target || !page) return;
-    var nav = page.querySelector('.pnav');
-    var top = target.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - (nav ? nav.offsetHeight + 12 : 12);
-    page.scrollTo({ top: Math.max(0, top), behavior: calm() ? 'auto' : 'smooth' });
-  });
-  function mark(page) {
-    var links = [].slice.call(page.querySelectorAll('.pnav a[data-scroll]'));
+  function scroller(el) { return el.querySelector('.casesheet__scroll'); }
+
+  function mark(el) {
+    var sc = scroller(el), links = [].slice.call(el.querySelectorAll('.pnav a[data-scroll]'));
     if (!links.length) return;
-    var edge = page.getBoundingClientRect().top + page.clientHeight * 0.32, cur = links[0];
+    var edge = sc.getBoundingClientRect().top + sc.clientHeight * 0.3, cur = links[0];
     links.forEach(function (l) {
       var t = document.getElementById(l.getAttribute('href').slice(1));
       if (t && t.getBoundingClientRect().top <= edge) cur = l;
     });
     links.forEach(function (l) { l.classList.toggle('on', l === cur); });
   }
-  [].slice.call(document.querySelectorAll('.page--case')).forEach(function (page) {
-    page.addEventListener('scroll', function () { mark(page); }, { passive: true });
-    mark(page);
+  Object.keys(sheets).forEach(function (id) {
+    var el = sheets[id];
+    scroller(el).addEventListener('scroll', function () { mark(el); }, { passive: true });
+    el.querySelector('.casesheet__close').addEventListener('click', close);
+  });
+
+  function show(id) {
+    var el = sheets[id];
+    if (!el) return false;
+    if (openId && openId !== id) { sheets[openId].hidden = true; }
+    openId = id;
+    el.hidden = false;
+    scroller(el).scrollTop = 0;
+    html.classList.add('has-sheet');
+    if (deckEl) deckEl.inert = true;
+    mark(el);
+    el.querySelector('.casesheet__close').focus({ preventScroll: true });
+    return true;
+  }
+  function hide() {
+    if (!openId) return;
+    sheets[openId].hidden = true;
+    openId = null;
+    html.classList.remove('has-sheet');
+    if (deckEl) deckEl.inert = false;
+    if (opener && opener.focus) { opener.focus({ preventScroll: true }); }
+    opener = null;
+  }
+  function open(id, from) {
+    if (!sheets[id]) return;
+    opener = from || null;
+    show(id);
+    history.pushState({ casesheet: id }, '', '#/project/' + id);
+  }
+  function close() {
+    if (!openId) return;
+    if (history.state && history.state.casesheet && !history.state.entry) { history.back(); return; }
+    hide();
+    history.replaceState(null, '', '#/project');
+  }
+
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest ? e.target.closest('a[data-case]') : null;
+    if (card) { e.preventDefault(); open(card.getAttribute('data-case'), card); return; }
+    var a = e.target.closest ? e.target.closest('a[data-scroll]') : null;
+    if (!a) return;
+    e.preventDefault();
+    var target = document.getElementById(a.getAttribute('href').slice(1));
+    var sc = a.closest('.casesheet__scroll');
+    if (!target || !sc) return;
+    var nav = sc.querySelector('.pnav');
+    var top = target.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (nav ? nav.offsetHeight + 12 : 12);
+    sc.scrollTo({ top: Math.max(0, top), behavior: calm() ? 'auto' : 'smooth' });
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && openId) { e.preventDefault(); close(); } });
+
+  function fromHash(h) {
+    var m = /^#\/project\/(keeplan|p\d+)$/.exec(h || '');
+    return m && sheets[m[1]] ? m[1] : null;
+  }
+  window.addEventListener('popstate', function () {
+    var id = fromHash(location.hash);
+    if (id) show(id); else if (openId) hide();
+  });
+  /* opened by address: go to the Projects page first, then lay the sheet over it */
+  window.addEventListener('load', function () {
+    var id = fromHash(initial);
+    if (!id) return;
+    if (window.DECK) window.DECK.go(3, 0, false);
+    show(id);
+    history.replaceState({ casesheet: id, entry: true }, '', '#/project/' + id);
   });
 })();
