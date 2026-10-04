@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Type.
 
-   The body is Nohemi (self-hosted, assets/nohemi.css); it was Inter, the ruxin.art setting: one size for
+   The body is not a choice. It is the ruxin.art setting: Inter, one size for
    almost everything, line height 1.5, and hierarchy carried by colour and
    weight rather than by size. That rule is the whole character of that site
    and it is what got copied here.
@@ -41,8 +41,8 @@
 
   /* Fixed. Loaded once, never swapped. */
   var BODY = {
-    family: '"Nohemi"' + FALLBACK,
-    href: 'assets/nohemi.css'
+    family: '"Inter"' + FALLBACK,
+    href: G + 'family=Inter:wght@400;500;600;700&display=swap'
   };
   var MONO = {
     family: '"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace',
