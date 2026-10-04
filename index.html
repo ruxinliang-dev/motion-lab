@@ -26,7 +26,7 @@
 <link rel="stylesheet" href="assets/site.css?v=228">
 <link rel="stylesheet" href="assets/labs.css?v=197">
 <link rel="stylesheet" href="assets/keeplan.css?v=212">
-<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=30">
+<link rel="stylesheet" href="assets/handdrawn-refinement.css?v=31">
 <script src="assets/theme.js?v=200"></script>
 <script src="assets/type.js?v=199"></script>
 </head>
@@ -226,7 +226,54 @@
           </div>
           <div class="pcards">
             <a class="pcard" href="#/project/keeplan" data-case="keeplan">
-              <span class="pcard__art pcard__art--keeplan" aria-hidden="true"><i></i></span>
+              <span class="pcard__art pcard__art--keeplan" aria-hidden="true">
+                <svg viewBox="0 0 480 285" preserveAspectRatio="xMidYMid slice" focusable="false">
+                  <defs>
+                    <linearGradient id="kpGo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b5fd0"/><stop offset="1" stop-color="#00b6d4"/></linearGradient>
+                    <g id="kpPin"><path d="M0 0c-9-11-14-18-14-26a14 14 0 0 1 28 0c0 8-5 15-14 26z"/><path fill="#fff" d="M0-30.5c-2.6-4.4-9-2-7 3 1 2.6 4.6 5.4 7 7.2 2.4-1.8 6-4.6 7-7.2 2-5-4.4-7.4-7-3z"/></g>
+                  </defs>
+                  <!-- soft light, the same way the product screens are lit -->
+                  <circle cx="60" cy="250" r="120" fill="#fff" opacity=".07"/>
+                  <circle cx="430" cy="40" r="90" fill="#fff" opacity=".08"/>
+                  <!-- the phone, cropped by the bottom of the cover -->
+                  <g class="kpc-phone">
+                    <rect x="176" y="26" width="128" height="300" rx="24" fill="#101012"/>
+                    <rect x="181" y="31" width="118" height="290" rx="19" fill="#fff"/>
+                    <rect x="215" y="36" width="50" height="11" rx="5.5" fill="#101012"/>
+                    <!-- the route, drawn by hand, and two pins -->
+                    <path d="M196 150c14-20 34-14 46-34 8-14 24-18 40-8" fill="none" stroke="#6b3fa0" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 8"/>
+                    <path d="M200 176c18 6 30-8 44-4s20 14 34 8" fill="none" stroke="#6b3fa0" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 6"/>
+                    <use href="#kpPin" fill="#6b3fa0" transform="translate(226 112)"/>
+                    <use href="#kpPin" fill="#0a7cff" transform="translate(198 146) scale(.7)"/>
+                    <!-- START -->
+                    <rect x="200" y="218" width="80" height="44" rx="15" fill="url(#kpGo)"/>
+                    <text x="240" y="245" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="800" letter-spacing=".06em" fill="#fff">START</text>
+                  </g>
+                  <!-- the things the app does, floating around it -->
+                  <g class="kpc-chip kpc-a">
+                    <rect x="34" y="78" width="124" height="34" rx="17" fill="#fff"/>
+                    <circle cx="53" cy="95" r="9" fill="#12a15e"/><path d="M48.6 95.2l3.2 3.2 5.6-6.4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <text x="68" y="99.5" font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#0d1b2a">First step done</text>
+                  </g>
+                  <g class="kpc-chip kpc-b">
+                    <rect x="322" y="58" width="128" height="34" rx="17" fill="#fff"/>
+                    <circle cx="341" cy="75" r="9" fill="#6b3fa0"/><path d="M337.4 75h7.2M341 71.4v7.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                    <text x="356" y="79.5" font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#0d1b2a">Join a walk</text>
+                  </g>
+                  <g class="kpc-chip kpc-c">
+                    <rect x="338" y="168" width="104" height="58" rx="18" fill="#fff"/>
+                    <circle cx="366" cy="197" r="15" fill="none" stroke="#dbe9fb" stroke-width="5"/>
+                    <circle cx="366" cy="197" r="15" fill="none" stroke="url(#kpGo)" stroke-width="5" stroke-linecap="round" stroke-dasharray="63 94" transform="rotate(-90 366 197)"/>
+                    <text x="390" y="195" font-family="Inter,system-ui,sans-serif" font-size="11.5" font-weight="700" fill="#0d1b2a">2 of 3</text>
+                    <text x="390" y="209" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="500" fill="#4a5c6e">steps</text>
+                  </g>
+                  <g class="kpc-chip kpc-d">
+                    <rect x="26" y="168" width="96" height="30" rx="15" fill="#fff" opacity=".92"/>
+                    <circle cx="44" cy="183" r="7" fill="#00b6d4"/>
+                    <text x="58" y="187.5" font-family="Inter,system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#0d1b2a">Hide email</text>
+                  </g>
+                </svg>
+              </span>
               <span class="pcard__body">
                 <span class="pcard__n">01</span>
                 <span class="pcard__t">KeePlan</span>
