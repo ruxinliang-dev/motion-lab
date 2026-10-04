@@ -991,3 +991,39 @@
     history.replaceState({ casesheet: id, entry: true }, '', '#/project/' + id);
   });
 })();
+
+/* KeePlan's cover for the Projects page: her logo on a white plate, the wordmark under it, and her own hand-drawn icons spread round them.
+   Nothing here is an image file; the icons and the mark are the ones the prototype draws (window.KP_ART, from keeplan.js). */
+(function () {
+  'use strict';
+  function build() {
+    var host = document.querySelector('.pcard__art--keeplan');
+    var art = window.KP_ART;
+    if (!host || !art || host.getAttribute('data-built')) return;
+    /* name, x, y, scale, rotation, opacity */
+    var ICONS = [
+      ['heart', 62, 58, 1.7, -12, .95], ['talk', 122, 36, 1.3, 6, .7], ['cal', 404, 52, 1.7, 8, .95], ['bell', 446, 112, 1.4, -8, .7],
+      ['pin', 40, 128, 1.5, 4, .85], ['checkc', 96, 198, 1.7, -6, .95], ['user', 146, 250, 1.2, 0, .6], ['chart', 352, 252, 1.3, 6, .8],
+      ['spark', 424, 204, 1.6, 10, .95], ['clock', 378, 150, 1.2, -4, .65], ['leaf', 104, 124, 1.15, 12, .6], ['paw', 24, 230, 1.3, -10, .7],
+      ['game', 252, 22, 1.05, 0, .55], ['moon', 332, 34, 1.2, 8, .7], ['bag', 200, 266, 1.0, -6, .5], ['zen', 292, 262, 1.15, 6, .6]
+    ];
+    var g = '';
+    ICONS.forEach(function (i) {
+      var d = art.icons[i[0]];
+      if (!d) return;
+      g += '<g class="kpc-i" transform="translate(' + i[1] + ' ' + i[2] + ') rotate(' + i[4] + ') scale(' + i[3] + ')" opacity="' + i[5] + '">' +
+           '<g transform="translate(-12 -12)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + d + '</g></g>';
+    });
+    var mark = art.mark().replace('<svg class="kp-mark" viewBox="0 0 290 274" aria-hidden="true">', '<svg x="199" y="64" width="82" height="78" viewBox="0 0 290 274">');
+    host.innerHTML =
+      '<svg viewBox="0 0 480 285" preserveAspectRatio="xMidYMid slice" focusable="false">' +
+        '<circle cx="70" cy="262" r="130" fill="#fff" opacity=".06"/><circle cx="440" cy="30" r="100" fill="#fff" opacity=".07"/>' +
+        g +
+        '<g class="kpc-plate"><rect x="178" y="48" width="124" height="124" rx="32" fill="#fff"/>' + mark + '</g>' +
+        '<text x="240" y="214" text-anchor="middle" font-family="Montserrat,Inter,system-ui,sans-serif" font-size="30" font-weight="800" letter-spacing="-.02em" fill="#fff">Kee<tspan fill-opacity=".82">Plan</tspan></text>' +
+      '</svg>';
+    host.setAttribute('data-built', '1');
+  }
+  window.addEventListener('load', function () { build(); setTimeout(build, 400); });
+})();
+

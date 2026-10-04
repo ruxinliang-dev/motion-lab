@@ -478,8 +478,8 @@
 
       /* the swatch row and a full colour picker */
       var bar = document.createElement('div');
-      bar.style.cssText = 'position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;' +
-        'padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:2;touch-action:manipulation;max-width:calc(100% - 16px)';
+      bar.style.cssText = 'position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;' +
+        'padding:7px 5px;border-radius:999px;background:rgba(255,255,255,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:2;touch-action:manipulation;max-height:calc(100% - 36px)';
       var narrow = host.clientWidth && host.clientWidth < 240;
       var CH = narrow ? 15 : 19;
       var chips = [];
@@ -549,7 +549,9 @@
         /* where each colour sits, from the outside in. The handle moves them all together; the breathing is a slow wobble on top. */
         var sc = 0.78 + 0.34 * S.y, br = 0.025 * Math.sin(t * 0.9);
         var p1 = Math.min(0.9, 0.80 * sc + br), p2 = 0.52 * sc - br * 0.6, p3 = 0.24 * sc + br * 0.4;
-        var N = 56, cx = w / 2, cy = h / 2;
+        /* the field sits in a smaller box: room on the left for the swatch column, a margin on the other sides for the label and the line at the foot */
+        var fx = 52, fy = 30, fw = Math.max(40, w - fx - 14), fh = Math.max(40, h - fy - 30);
+        var N = 56, cx = fx + fw / 2, cy = fy + fh / 2;
         for (var q = N; q >= 1; q--) {
           var dn = q / N;                                  /* 1 at the outer edge of the tile, 0 in the middle */
           var col;
@@ -557,7 +559,7 @@
           else if (dn >= p2) col = mixRgb(cur[0], cur[1], sm((p1 - dn) / (p1 - p2)));
           else if (dn >= p3) col = mixRgb(cur[1], cur[2], sm((p2 - dn) / (p2 - p3)));
           else col = cur[2];
-          var hx = (w / 2) * dn * 1.04, hy = (h / 2) * dn * 1.04, rr = Math.min(hx, hy) * 0.62;
+          var hx = (fw / 2) * dn * 1.04, hy = (fh / 2) * dn * 1.04, rr = Math.min(hx, hy) * 0.62;
           ctx.fillStyle = css(col);
           ctx.beginPath();
           if (ctx.roundRect) ctx.roundRect(cx - hx, cy - hy, hx * 2, hy * 2, rr); else ctx.rect(cx - hx, cy - hy, hx * 2, hy * 2);
@@ -565,12 +567,15 @@
         }
 
         /* the handle, on the left edge */
-        var hy2 = Math.max(24, Math.min(h - 24, h * S.y));
-        ctx.fillStyle = '#12a1c0'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(16, hy2, S.on ? 12 : 10, 0, 6.2832); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(10, hy2 - 3); ctx.lineTo(16, hy2 - 6); ctx.lineTo(22, hy2 - 3);
-        ctx.moveTo(10, hy2 + 3); ctx.lineTo(16, hy2 + 6); ctx.lineTo(22, hy2 + 3); ctx.stroke();
+        var hy2 = Math.max(fy + 12, Math.min(fy + fh - 12, fy + fh * S.y)), hxp = w - 14;
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.18;
+        ctx.fillRect(hxp - 1, fy + 8, 2, fh - 16);                                   /* a thin track the handle slides along */
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = tok('--surface'); ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(hxp, hy2, S.on ? 9 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(hxp - 3, hy2 - 1.5); ctx.lineTo(hxp, hy2 - 4); ctx.lineTo(hxp + 3, hy2 - 1.5);
+        ctx.moveTo(hxp - 3, hy2 + 1.5); ctx.lineTo(hxp, hy2 + 4); ctx.lineTo(hxp + 3, hy2 + 1.5); ctx.stroke();
 
         ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';

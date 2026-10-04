@@ -627,5 +627,38 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 @media (prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-chip,.pcard__art--keeplan .kpc-phone{transition:none}.pcard:hover .kpc-chip,.pcard:hover .kpc-phone{transform:none}}
 
 /* the prototype's phone, scaled to fit the sheet (see fit() in site.js); the list beside it keeps its size */
-.casesheet .page--flow--inline .kp{zoom:var(--kps,1);align-items:center}
+.casesheet .page--flow--inline .kp{align-items:center}
+.casesheet .page--flow--inline .kp-phone{zoom:var(--kps,1)}
 
+/* the sticky nav reaches both edges of the sheet: its background and its line used to stop at the width of the text column,
+   which left a visible cut at the right */
+.pnav{clip-path:inset(0 -100vmax);box-shadow:0 0 0 100vmax var(--bg)}
+.pnav{position:sticky}
+.pnav::after{content:"";position:absolute;left:-100vmax;right:-100vmax;bottom:0;height:1px;background:var(--line,rgba(0,0,0,.1));pointer-events:none}
+
+/* a denser sheet: the same text and the same sizes, with less air between the parts */
+.casesheet .page{padding:12px 0 48px}
+.casesheet .page--case .section{margin-top:clamp(20px,3.2vh,32px)}
+.casesheet .page--flow--inline{margin-top:clamp(20px,3.2vh,32px)}
+.casesheet .page--doc.page--top .section > * + *{margin-top:12px}
+.casesheet .page--doc .note,.casesheet .page--doc .person{padding:14px 16px}
+.casesheet .page--doc .goal{padding:10px 12px}
+.casesheet .page--doc .facts div,.casesheet .page--doc .figs div{padding:10px 12px}
+.casesheet .phero p{margin-bottom:10px}
+.casesheet .page--case .phero + .pnav{margin-top:12px}
+
+/* KeePlan's cover */
+.pcard__art--keeplan svg{display:block;width:100%;height:100%}
+.pcard__art--keeplan .kpc-i{transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.pcard__art--keeplan .kpc-plate{transition:transform .5s cubic-bezier(.2,.7,.2,1);transform-box:fill-box;transform-origin:center}
+.pcard:hover .kpc-plate,.pcard:focus-visible .kpc-plate{transform:scale(1.05)}
+@media (prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-i,.pcard__art--keeplan .kpc-plate{transition:none}.pcard:hover .kpc-plate{transform:none}}
+
+.casesheet .page--flow--inline .flow__step{padding-top:4px;padding-bottom:4px}
+/* the nav's own box no longer scrolls (that clipped its full-width line); the row of links inside it does */
+.pnav{overflow:visible;display:block;padding:0}
+.pnav__row{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px 0}
+.pnav__row::-webkit-scrollbar{display:none}
+
+/* the nav's full-width line reaches past the text column; it must not make the sheet scroll sideways */
+.casesheet__scroll{overflow-x:hidden}

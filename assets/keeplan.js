@@ -199,6 +199,9 @@
   }
 
 
+  /* the project card's cover is drawn from these (assets/site.js) */
+  window.KP_ART = { icons: ICONS, mark: mark };
+
   /* --------------------------------------------------------------------- */
   /* State                                                                  */
   /* --------------------------------------------------------------------- */
