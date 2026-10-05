@@ -662,3 +662,9 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 
 /* the nav's full-width line reaches past the text column; it must not make the sheet scroll sideways */
 .casesheet__scroll{overflow-x:hidden}
+
+/* the sections of a project page were separated by 76px of padding above and below each one (about 180px between two blocks of text).
+   Now a section carries 28px above its content and a hairline between it and the one before. */
+.casesheet .page--case .section{padding-top:28px;padding-bottom:0;margin-top:36px;border-top:1px solid var(--line,rgba(0,0,0,.1))}
+.casesheet .page--case #flow{padding-top:0;margin-top:0;border-top:0}
+.casesheet .page--case .page--flow--inline{margin-top:18px}
