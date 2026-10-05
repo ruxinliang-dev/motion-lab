@@ -1027,3 +1027,97 @@
   window.addEventListener('load', function () { build(); setTimeout(build, 400); });
 })();
 
+/* Text decode, after the Kimi type-system film: a heading arrives as random letters that lock into place one after another, left to
+   right (about 0.9s in all). Used for the intro headline, the page titles and the chapter names under it. It runs once per element, when
+   the element first comes into view, never under reduced motion, and the heading keeps its real text for screen readers. Each letter is
+   given its final width while it flickers, so nothing around it moves. */
+(function () {
+  'use strict';
+  var html = document.documentElement;
+  var GLYPHS = 'ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghkmnopqrstuvwxyz0123456789';
+  function calm() {
+    return html.getAttribute('data-motion') === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  function textNodes(root) {
+    var out = [], w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n;
+    while ((n = w.nextNode())) if (n.nodeValue.trim()) out.push(n);
+    return out;
+  }
+  function decode(el, delay) {
+    if (el.__decoded || calm()) return;
+    el.__decoded = true;
+    var original = el.innerHTML;
+    var label = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!label || label.length > 70) return;
+    var letters = [];
+    textNodes(el).forEach(function (node) {
+      var frag = document.createDocumentFragment();
+      node.nodeValue.split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+        var word = document.createElement('span');
+        word.style.whiteSpace = 'nowrap';
+        word.setAttribute('aria-hidden', 'true');
+        part.split('').forEach(function (ch) {
+          var sp = document.createElement('span');
+          sp.className = 'dx';
+          sp.textContent = ch;
+          word.appendChild(sp);
+          if (/[A-Za-z0-9]/.test(ch)) letters.push({ el: sp, ch: ch });
+        });
+        frag.appendChild(word);
+      });
+      node.parentNode.replaceChild(frag, node);
+    });
+    el.setAttribute('aria-label', label);
+    /* give each letter its final width before anything is scrambled */
+    letters.forEach(function (l) { l.w = l.el.getBoundingClientRect().width; });
+    letters.forEach(function (l) { l.el.style.width = l.w + 'px'; });
+    var n = letters.length, step = Math.min(30, 900 / Math.max(1, n));
+    var t0 = performance.now() + (delay || 0), done = 0;
+    letters.forEach(function (l, i) { l.lock = i * step + Math.random() * 90; l.last = -1; });
+    function frame(now) {
+      var t = now - t0;
+      if (t < 0) { requestAnimationFrame(frame); return; }
+      done = 0;
+      letters.forEach(function (l) {
+        if (t >= l.lock) { if (l.el.textContent !== l.ch) l.el.textContent = l.ch; done++; return; }
+        var tick = Math.floor(t / 46);
+        if (tick !== l.last) {
+          l.last = tick;
+          var g = GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length));
+          l.el.textContent = /[a-z]/.test(l.ch) ? g.toLowerCase() : g;
+        }
+      });
+      if (done < n) requestAnimationFrame(frame);
+      else { el.innerHTML = original; el.removeAttribute('aria-label'); }
+    }
+    letters.forEach(function (l) { l.el.textContent = ' '; });
+    requestAnimationFrame(frame);
+  }
+
+  window.labDecode = decode;               /* handy for trying it on any element from the console */
+  var TARGETS = '.page--intro .eyebrow, .page--intro h1, .page .section__head h2, .page .phero h1, .guide a > b, .casesheet .section__head h2, .casesheet .phero h1';
+  function watch() {
+    if (calm() || !('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting || html.classList.contains('booting')) return;
+        var el = en.target;
+        io.unobserve(el);
+        var rank = el.matches('.eyebrow') ? 0 : el.matches('h1') ? 140 : el.matches('.guide a > b') ? 380 + [].indexOf.call(el.closest('.guide').children, el.parentNode) * 90 : 80;
+        decode(el, rank);
+      });
+    }, { threshold: 0.6 });
+    [].slice.call(document.querySelectorAll(TARGETS)).forEach(function (el) { io.observe(el); });
+    /* the observer cannot fire while the page is still held invisible by the opening fade: look again once it is released */
+    var again = setInterval(function () {
+      if (html.classList.contains('booting')) return;
+      clearInterval(again);
+      [].slice.call(document.querySelectorAll(TARGETS)).forEach(function (el) { if (!el.__decoded) { io.unobserve(el); io.observe(el); } });
+    }, 120);
+    setTimeout(function () { clearInterval(again); }, 6000);
+  }
+  window.addEventListener('load', function () { setTimeout(watch, 60); });
+})();
+

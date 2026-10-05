@@ -672,3 +672,7 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 /* intro: the headline block sits a little lower, so it is centred between the top bar and the bottom menu (the note and arrow at the top are
    annotations and do not count). The content moves by the full amount added here (measured: 28px at a 742px-high window). */
 .page--intro > .wrap.hero{padding-top:clamp(110px,calc(110px + 3.8vh),150px)}
+
+/* text decode: a letter keeps its own width while it flickers, so the line does not jump */
+.dx{display:inline-block;white-space:pre;text-align:left;vertical-align:baseline}
+
