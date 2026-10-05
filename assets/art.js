@@ -317,7 +317,7 @@
         }
         return null;
       }
-      var dim = { w: 0, h: 0 };
+      var dim = { w: 0, h: 0 }, scratch = null, sctx = null;
       var pressT = 0, pressX = 0, pressY = 0, shown = null, shownT = 0;
       function clearPress() { if (pressT) { clearTimeout(pressT); pressT = 0; } }
       var pending = null;      /* a new shape being held, not yet dropped */
@@ -387,8 +387,33 @@
         var dt = lastT ? Math.min(0.033, Math.max(0.001, t - lastT)) : 0.016;
         lastT = t;
         step(dt, w, h);
-        for (var gi = 0; gi < bodies.length; gi++) drawBody(ctx, bodies[gi]);
-        if (pending) { pending.pop = 0.6; drawBody(ctx, pending); }
+        /* the shapes are not painted: they are drawn on a half-size scratch canvas and printed as a honeycomb of round dots, the dot
+           size following how much of the place the shape covers (so edges fade out over a row or two) and the colour following the shape */
+        var hw = Math.max(1, Math.round(w / 2)), hh = Math.max(1, Math.round(h / 2));
+        if (!scratch) { scratch = document.createElement('canvas'); sctx = scratch.getContext('2d', { willReadFrequently: true }); }
+        if (scratch.width !== hw || scratch.height !== hh) { scratch.width = hw; scratch.height = hh; }
+        sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.clearRect(0, 0, hw, hh); sctx.scale(0.5, 0.5);
+        for (var gi = 0; gi < bodies.length; gi++) drawBody(sctx, bodies[gi]);
+        if (pending) { pending.pop = 0.6; drawBody(sctx, pending); }
+        var sd = sctx.getImageData(0, 0, hw, hh).data;
+        var pit = Math.max(4.4, Math.min(6, w / 100)), rowH = pit * 0.866, spread = pit * 0.8;
+        var offs = [0, 0, spread, 0, -spread, 0, 0, spread, 0, -spread];
+        for (var jy = 0, ry = 0; ry < h + pit; jy++, ry = jy * rowH) {
+          for (var ix = 0, rx = (jy % 2 ? pit / 2 : 0); rx < w + pit; ix++, rx = ix * pit + (jy % 2 ? pit / 2 : 0)) {
+            var aS = 0, rS = 0, gS = 0, bS = 0;
+            for (var oi = 0; oi < 10; oi += 2) {
+              var px = Math.round((rx + offs[oi]) / 2), py = Math.round((ry + offs[oi + 1]) / 2);
+              if (px < 0 || py < 0 || px >= hw || py >= hh) continue;
+              var di = (py * hw + px) * 4, al = sd[di + 3] / 255;
+              if (al > 0) { aS += al; rS += sd[di] * al; gS += sd[di + 1] * al; bS += sd[di + 2] * al; }
+            }
+            if (aS < 0.25) continue;
+            var cv = Math.min(1, aS / 5 * 1.25), rd = pit * 0.52 * Math.pow(cv, 1.1);
+            if (rd < 0.5) continue;
+            ctx.fillStyle = 'rgb(' + Math.round(rS / aS) + ',' + Math.round(gS / aS) + ',' + Math.round(bS / aS) + ')';
+            ctx.beginPath(); ctx.arc(rx, ry, rd, 0, 6.2832); ctx.fill();
+          }
+        }
         if (shown) {
           if (shownT > 0) { shownT -= dt; if (shownT <= 0) shown = null; }
           if (shown && shown !== pending && bodies.indexOf(shown) < 0) shown = null;
@@ -408,16 +433,16 @@
           ctx.fillText(txt, lx + 21, ly + th / 2 + 0.5);
           ctx.textBaseline = 'alphabetic';
         }
-        /* the hint sits at the top centre, under the word Motion's row, for as long as the tile is on screen; a short tile gets one line */
-        ctx.font = '500 ' + (h < 200 ? 10 : 11) + 'px ' + (tok('--mono') || 'ui-monospace, monospace');
-        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.5 : 0.78; ctx.textAlign = 'center';
+        /* every tile keeps its hint in the top right corner, in the same type; a short tile gets one line */
+        ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = touched ? 0.45 : 0.6; ctx.textAlign = 'right';
         if (h < 200) {
-          ctx.fillText('tap drop · hold colour · drag throw', w / 2, 24);
+          ctx.fillText('tap drop · hold colour · drag throw', w - 14, 20);
         } else {
-          ctx.fillText('tap → drop a shape', w / 2, 26);
-          ctx.fillText('hold → see its colour, let go to drop', w / 2, 42);
-          ctx.fillText('drag a shape → throw it', w / 2, 58);
-          ctx.fillText('double-tap → clear', w / 2, 74);
+          ctx.fillText('tap → drop a shape', w - 14, 20);
+          ctx.fillText('hold → see its colour, let go to drop', w - 14, 35);
+          ctx.fillText('drag a shape → throw it', w - 14, 50);
+          ctx.fillText('double-tap → clear', w - 14, 65);
         }
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
@@ -524,21 +549,15 @@
       function mv(e) { S.hover = true; if (S.on) S.ty = norm(e); }
       function u() { S.on = false; }
       function lv() { if (!S.on) S.hover = false; }
-      host.style.touchAction = 'none'; host.style.cursor = 'ns-resize';
-      host.addEventListener('pointerdown', d);
-      host.addEventListener('pointermove', mv);
-      host.addEventListener('pointerup', u);
-      host.addEventListener('pointercancel', u);
-      host.addEventListener('pointerleave', lv);
 
       function mixRgb(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
       function css(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
-      function sm(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
-      var last = 0;
+      function sm(t) { t = Math.max(0, Math.min(1, t)); return t * t * t * (t * (t * 6 - 15) + 10); }
+      var last = 0, scratch = null, sctx = null;
       var stop = scene(host, function (ctx, w, h, t) {
         var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
-        if (!S.on && !S.hover) S.ty = 0.5 + 0.22 * Math.sin(t * 0.5);
-        S.y += (S.ty - S.y) * Math.min(1, dt * 9);
+        S.ty = 0.5 + 0.22 * Math.sin(t * 0.5);
+        S.y += (S.ty - S.y) * Math.min(1, dt * 3);
         for (var i = 0; i < 3; i++) for (var k = 0; k < 3; k++) cur[i][k] += (tgt[i][k] - cur[i][k]) * Math.min(1, dt * 6);
         geom.w = w; geom.h = h;
 
@@ -547,47 +566,52 @@
         ctx.fillStyle = css(bg); ctx.fillRect(0, 0, w, h);
 
         /* where each colour sits, from the outside in. The handle moves them all together; the breathing is a slow wobble on top. */
-        var sc = 0.78 + 0.34 * S.y, br = 0.025 * Math.sin(t * 0.9);
+        var u = still() ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.1);   /* 0 = the full rounded square, 1 = a small circle: the whole field breathes between the two */
+        var sc = (0.78 + 0.34 * S.y) * (1 - 0.34 * u), br = 0.025 * Math.sin(t * 0.9);
         var p1 = Math.min(0.9, 0.80 * sc + br), p2 = 0.52 * sc - br * 0.6, p3 = 0.24 * sc + br * 0.4;
         /* the field sits in a smaller box: room on the left for the swatch column, a margin on the other sides for the label and the line at the foot */
         var fx = 52, fy = 30, fw = Math.max(40, w - fx - 14), fh = Math.max(40, h - fy - 30);
-        var N = 56, cx = fx + fw / 2, cy = fy + fh / 2;
+        var N = 160, cx = fx + fw / 2, cy = fy + fh / 2;
+        /* The field is drawn on a half-size scratch canvas (the outer rings fade out by transparency instead of by mixing into the card),
+           then printed as a honeycomb of round dots: the dot size follows the opacity, the dot colour follows the field. */
+        var hw = Math.max(1, Math.round(w / 2)), hh = Math.max(1, Math.round(h / 2));
+        if (!scratch) { scratch = document.createElement('canvas'); sctx = scratch.getContext('2d', { willReadFrequently: true }); }
+        if (scratch.width !== hw || scratch.height !== hh) { scratch.width = hw; scratch.height = hh; }
+        sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.clearRect(0, 0, hw, hh); sctx.scale(0.5, 0.5);
         for (var q = N; q >= 1; q--) {
           var dn = q / N;                                  /* 1 at the outer edge of the tile, 0 in the middle */
-          var col;
-          if (dn >= p1) col = mixRgb(bg, cur[0], sm((1 - dn) / (1 - p1) * 1));   /* surface -> glow */
+          var col, alp = 1;
+          if (dn >= p1) { col = cur[0]; alp = sm((1 - dn) / (1 - p1)); }   /* clear -> glow */
           else if (dn >= p2) col = mixRgb(cur[0], cur[1], sm((p1 - dn) / (p1 - p2)));
           else if (dn >= p3) col = mixRgb(cur[1], cur[2], sm((p2 - dn) / (p2 - p3)));
           else col = cur[2];
-          var hx = (fw / 2) * dn * 1.04, hy = (fh / 2) * dn * 1.04, rr = Math.min(hx, hy) * 0.62;
-          ctx.fillStyle = css(col);
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(cx - hx, cy - hy, hx * 2, hy * 2, rr); else ctx.rect(cx - hx, cy - hy, hx * 2, hy * 2);
-          ctx.fill();
+          var hx = (fw / 2) * dn * 1.04, hy = (fh / 2) * dn * 1.04, rr = Math.min(hx, hy) * (0.62 + 0.38 * u);
+          sctx.beginPath();
+          if (sctx.roundRect) sctx.roundRect(cx - hx, cy - hy, hx * 2, hy * 2, rr); else sctx.rect(cx - hx, cy - hy, hx * 2, hy * 2);
+          sctx.globalCompositeOperation = 'destination-out'; sctx.fillStyle = '#000'; sctx.fill();       /* replace what is under this ring */
+          sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = alp; sctx.fillStyle = css(col); sctx.fill(); sctx.globalAlpha = 1;
         }
-
-        /* the handle, on the left edge */
-        var hy2 = Math.max(fy + 12, Math.min(fy + fh - 12, fy + fh * S.y)), hxp = w - 14;
-        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.18;
-        ctx.fillRect(hxp - 1, fy + 8, 2, fh - 16);                                   /* a thin track the handle slides along */
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = tok('--surface'); ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(hxp, hy2, S.on ? 9 : 8, 0, 6.2832); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.moveTo(hxp - 3, hy2 - 1.5); ctx.lineTo(hxp, hy2 - 4); ctx.lineTo(hxp + 3, hy2 - 1.5);
-        ctx.moveTo(hxp - 3, hy2 + 1.5); ctx.lineTo(hxp, hy2 + 4); ctx.lineTo(hxp + 3, hy2 + 1.5); ctx.stroke();
+        var sd = sctx.getImageData(0, 0, hw, hh).data;
+        var pit = Math.max(3.6, Math.min(4.8, w / 85)), rowH = pit * 0.866;
+        for (var jy = 0, ry = 0; ry < h + pit; jy++, ry = jy * rowH) {
+          for (var ix = 0, rx = (jy % 2 ? pit / 2 : 0); rx < w + pit; ix++, rx = ix * pit + (jy % 2 ? pit / 2 : 0)) {
+            var px = Math.round(rx / 2), py = Math.round(ry / 2);
+            if (px < 0 || py < 0 || px >= hw || py >= hh) continue;
+            var di = (py * hw + px) * 4, al = sd[di + 3] / 255;
+            if (al < 0.05) continue;
+            var rd = pit * 0.57 * Math.pow(al, 0.55);
+            if (rd < 0.45) continue;
+            ctx.fillStyle = 'rgb(' + sd[di] + ',' + sd[di + 1] + ',' + sd[di + 2] + ')';
+            ctx.beginPath(); ctx.arc(rx, ry, rd, 0, 6.2832); ctx.fill();
+          }
+        }
 
         ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.6; ctx.textAlign = 'right';
-        ctx.fillText('drag \u00b7 pick a theme', w - 14, 20);
+        ctx.fillText('pick a theme', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
       });
       return function () {
-        host.removeEventListener('pointerdown', d);
-        host.removeEventListener('pointermove', mv);
-        host.removeEventListener('pointerup', u);
-        host.removeEventListener('pointercancel', u);
-        host.removeEventListener('pointerleave', lv);
         if (bar.parentNode) bar.parentNode.removeChild(bar);
         if (stop) stop();
       };
@@ -893,7 +917,7 @@
   var star = {
     id: 'icon',
     label: 'Icon',
-    span: '',
+    span: 'tile--1x2',
     math: 'Hover or hold to grow · release to pause',
     mount: function (host) {
       // Fresh procedural targets; interpolation freezes exactly on pointer leave.
@@ -1122,7 +1146,7 @@
          and never the one you just had. */
       var PALETTE = ['--c1', '--c3', '--c4', '--c2', '--c6', '--c5'];
       var DH0 = 34, DH_MIN = 7;
-      var TRAVEL = 0.46, POP = 0.44;   /* front crossing time, bounce tail */
+      var TRAVEL = 1.2, POP = 1.0;   /* front crossing time, bounce tail */
 
       var px = -999, py = -999, hasPointer = false;
       var slot = 0, dh = DH0, found = 0, round = 0;
@@ -1210,7 +1234,7 @@
             var x = ox + c * step, y = oy + r * step;
             var dx = x - ax, dy = y - ay;
             var g = Math.exp(-(dx * dx + dy * dy) / two);
-            var rad = 1.1 + 4.4 * g;
+            var rad = 1.9 + 5.8 * g;
 
             var mine = now, pop = 1, wake = 0;
             if (running) {
@@ -1219,8 +1243,8 @@
               var local = age - Math.sqrt(sx * sx + sy * sy) / diag * TRAVEL;
               if (local < 0) mine = was;
               else {
-                pop = 1 + 0.82 * Math.exp(-local * 10) * Math.sin(local * 27);
-                wake = Math.exp(-local * 6);
+                pop = 1 + 0.82 * Math.exp(-local * 4.5) * Math.sin(local * 12);
+                wake = Math.exp(-local * 2.6);
               }
             }
 
@@ -1246,7 +1270,7 @@
                  find it without sweeping anything. Uncovered it still needs
                  the room — a hue difference on a 1.1px dot is a rounding
                  error — so the floor arrives exactly as the colour does. */
-              rad = Math.max(rad, 1.1 + 1.6 * seen[at]);
+              rad = Math.max(rad, 1.9 + 1.6 * seen[at]);
             }
             rad = Math.max(0.45, rad * pop);
 
@@ -1285,9 +1309,9 @@
 
         if (found) {
           ctx.fillStyle = 'rgba(0,0,0,.34)';
-          ctx.font = '500 10px ' + (tok('--mono') || 'monospace');
+          ctx.font = '500 10.5px ' + (tok('--mono') || 'monospace');
           ctx.textAlign = 'right';
-          ctx.fillText(found + ' found · Δh ' + dh.toFixed(0) + '°', w - 12, 18);
+          ctx.fillText(found + ' found · Δh ' + dh.toFixed(0) + '°', w - 14, 20);
         }
       });
 
@@ -1579,7 +1603,322 @@
     }
   };
 
-  window.ART = [curves, ramp, star, lattice];
+
+  /* --------------------------------------------------------------------- */
+  /* Halftone: a word made of dots that the pointer pushes aside            */
+  /* --------------------------------------------------------------------- */
+
+  /* The word is drawn once, off screen, and read back on a regular grid: each grid cell becomes one dot whose radius follows how much of
+     the cell the letters cover (coverage^0.8), so heavy strokes are dense and big, edges thin out into small dots, and a few tiny
+     stray dots are scattered just outside the letters. Every dot remembers its home. The pointer pushes the dots near it away,
+     slowly, and they drift back when it leaves (a spring that is deliberately soft). No arrow is drawn: the site's own pointer is the cursor. */
+  var halftone = {
+    id: 'halftone',
+    label: 'Halftone',
+    span: 'tile--2x2',
+    math: 'r = pitch \u00b7 coverage^0.8,  push = (1 \u2212 d/R)\u00b2',
+    mount: function (host) {
+      var WORD = 'MOTION', DEFAULT = 'MOTION';
+      var dots = [], pitch = 6, W = 0, H = 0;
+      var ptr = { x: -999, y: -999, on: false };
+      var seed = 7;
+      function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+
+      function build(w, h) {
+        W = w; H = h; dots = []; seed = 7;
+        pitch = Math.max(3.2, Math.min(4.4, w / 135));
+        var off = document.createElement('canvas');
+        off.width = Math.max(1, Math.round(w)); off.height = Math.max(1, Math.round(h));
+        var c = off.getContext('2d');
+        c.fillStyle = '#000'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+        var fam = '"Archivo", "Inter", system-ui, sans-serif';
+        var size = 100;
+        c.font = '800 ' + size + 'px ' + fam;
+        try { c.fontStretch = 'semi-condensed'; } catch (e) {}
+        var m = c.measureText(WORD);
+        size = Math.floor(size * (w * 0.88) / Math.max(1, m.width));
+        size = Math.min(size, h * 0.74);
+        size = Math.floor(size * 0.94);
+        c.font = '800 ' + size + 'px ' + fam;
+        try { c.fontStretch = 'semi-condensed'; c.letterSpacing = Math.round(size * 0.07) + 'px'; } catch (e) {}   /* open letter gaps keep the shapes readable in dots */
+        c.fillText(WORD, w / 2, h / 2 + size * 0.36);
+        var img = c.getImageData(0, 0, off.width, off.height).data;
+        var cols = Math.floor(w / pitch), rows = Math.floor(h / pitch);
+        var ox = (w - cols * pitch) / 2 + pitch / 2, oy = (h - rows * pitch) / 2 + pitch / 2;
+        var cov = new Float32Array(cols * rows);
+        for (var gy = 0; gy < rows; gy++) {
+          for (var gx = 0; gx < cols; gx++) {
+            var x0 = Math.floor(ox + gx * pitch - pitch / 2), y0 = Math.floor(oy + gy * pitch - pitch / 2), sum = 0, cnt = 0;
+            for (var yy = y0; yy < y0 + Math.ceil(pitch); yy += 2) {
+              for (var xx = x0; xx < x0 + Math.ceil(pitch); xx += 2) {
+                if (xx < 0 || yy < 0 || xx >= off.width || yy >= off.height) continue;
+                sum += img[(yy * off.width + xx) * 4 + 3] / 255; cnt++;
+              }
+            }
+            cov[gy * cols + gx] = cnt ? sum / cnt : 0;
+          }
+        }
+        /* A halftone is a full sheet of dots; the picture is only in how big each one is. Every place on the grid gets a dot: big and nearly
+           touching where the letters are, tiny everywhere else, and in between the size follows a softly blurred copy of the letters, so
+           the edge fades out over a few rows instead of ending. Rows are staggered by half a pitch. Far from the letters a few dots go
+           missing, which is what makes the sheet thin out toward its borders. */
+        var rMax = pitch * 0.5, rMin = Math.max(0.5, pitch * 0.11);
+        for (var j = 0; j < rows; j++) {
+          for (var i = 0; i < cols; i++) {
+            var bl = 0, wsum = 0;
+            for (var dy = -3; dy <= 3; dy++) for (var dx = -3; dx <= 3; dx++) {
+              var ni = i + dx, nj = j + dy;
+              if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue;
+              var wgt = Math.max(0, 1 - Math.sqrt(dx * dx + dy * dy) / 3.4);
+              bl += cov[nj * cols + ni] * wgt; wsum += wgt;
+            }
+            bl = wsum ? bl / wsum : 0;
+            var hx = ox + i * pitch + (j % 2 ? pitch / 2 : 0), hy = oy + j * pitch;
+            if (hx > w) continue;
+            var q = Math.max(0, Math.min(1, (bl - 0.08) / 0.7));
+            q = q * q * (3 - 2 * q);
+            var r = rMin + (rMax - rMin) * q;
+            if (bl < 0.02) {
+              var edge = Math.min(hx, w - hx, hy, h - hy) / pitch;   /* rows from the tile's border */
+              if (rnd() < 0.18 + 0.5 * Math.max(0, 1 - edge / 7)) continue;
+              r = rMin * (0.55 + 0.6 * rnd());
+            }
+            dots.push({ hx: hx, hy: hy, ox: 0, oy: 0, vx: 0, vy: 0, r: r, k1: rnd(), k2: rnd() });
+          }
+        }
+      }
+
+      function move(e) {
+        var b = host.getBoundingClientRect();
+        ptr.x = e.clientX - b.left; ptr.y = e.clientY - b.top; ptr.on = true;
+      }
+      function leave() { ptr.on = false; }
+      host.addEventListener('pointermove', move);
+      host.addEventListener('pointerdown', move);
+      host.addEventListener('pointerleave', leave);
+      host.addEventListener('pointercancel', leave);
+
+      /* type to change the word: click the tile (or tab to it) and write; Escape puts MOTION back */
+      var typing = false;
+      host.tabIndex = 0;
+      host.setAttribute('role', 'img');
+      host.setAttribute('aria-label', 'Halftone word. Click, then type to change it.');
+      var field = document.createElement('input');
+      field.type = 'text'; field.maxLength = 8; field.autocapitalize = 'characters'; field.autocomplete = 'off'; field.spellcheck = false;
+      field.setAttribute('aria-label', 'Type a word for the halftone');
+      field.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;pointer-events:none';
+      host.appendChild(field);
+      function setWord(v) {
+        v = (v || '').toUpperCase().replace(/[^A-Z0-9 .!?&+-]/g, '').slice(0, 8);
+        WORD = v.trim() ? v : DEFAULT; built = false;
+      }
+      function focusIt() { try { field.focus({ preventScroll: true }); } catch (e) { field.focus(); } }
+      function onFocus() { typing = true; field.value = WORD === DEFAULT ? '' : WORD; }
+      function onBlur() { typing = false; }
+      function onInput() { setWord(field.value); }
+      function onKey(e) {
+        e.stopPropagation();                               /* letters belong to the word, not to the page's shortcuts */
+        if (e.key === 'Escape') { field.value = ''; WORD = DEFAULT; built = false; field.blur(); }
+      }
+      function onClick() { focusIt(); }
+      function onHostFocus() { focusIt(); }
+      host.addEventListener('click', onClick);
+      host.addEventListener('focus', onHostFocus);
+      field.addEventListener('focus', onFocus);
+      field.addEventListener('blur', onBlur);
+      field.addEventListener('input', onInput);
+      field.addEventListener('keydown', onKey);
+      field.addEventListener('keyup', function (e) { e.stopPropagation(); });
+
+      var last = 0, built = false;
+      var stop = scene(host, function (ctx, w, h, t, fresh) {
+        if (!built || fresh || w !== W || h !== H) {
+          /* wait for the heading font if it has not arrived yet; the dots are rebuilt once when it does */
+          build(w, h); built = true;
+          if (document.fonts && document.fonts.load) document.fonts.load('800 100px Archivo', 'MOTION').then(function () { built = false; });
+        }
+        var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
+        ctx.clearRect(0, 0, w, h);
+        var R = Math.max(90, Math.min(w, h) * 0.62);
+        var k = 7, c = 5.2, push = 62;          /* soft: the dots give way slowly and come back slowly */
+        ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        for (var n = 0; n < dots.length; n++) {
+          var d = dots[n], tx = 0, ty = 0, grow = 1;
+          if (ptr.on) {
+            var dx = d.hx - ptr.x, dy = d.hy - ptr.y, dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < R) {
+              var f = 1 - dist / R; f = f * f * (3 - 2 * f); f *= f;   /* a soft edge: it eases in from nothing at the rim */
+              var inv = dist > 0.001 ? 1 / dist : 0;
+              /* the dots scatter: each leaves along its own slightly different direction and distance, and keeps its size, so the
+                 letters break up into drifting dots instead of fading out */
+              var m = 0.55 + 0.9 * d.k1, tg = (d.k2 - 0.5) * 1.1;
+              tx = (dx * inv * m - dy * inv * tg) * push * f; ty = (dy * inv * m + dx * inv * tg) * push * f; grow = 1 - 0.1 * f;
+            }
+          }
+          d.vx += ((tx - d.ox) * k - d.vx * c) * dt;
+          d.vy += ((ty - d.oy) * k - d.vy * c) * dt;
+          d.ox += d.vx * dt; d.oy += d.vy * dt;
+          var rr = d.r * (grow + 0.0);
+          var x = d.hx + d.ox, y = d.hy + d.oy;
+          ctx.moveTo(x + rr, y);
+          ctx.arc(x, y, rr, 0, 6.2832);
+        }
+        ctx.fill();
+        ctx.globalAlpha = 0.6; ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.textAlign = 'right'; ctx.fillText(typing ? 'typing \u00b7 esc resets' : 'click \u00b7 type a word', w - 14, 20);
+        ctx.globalAlpha = 1; ctx.textAlign = 'left';
+      });
+      return function () {
+        host.removeEventListener('click', onClick);
+        host.removeEventListener('focus', onHostFocus);
+        if (field.parentNode) field.parentNode.removeChild(field);
+        host.removeEventListener('pointermove', move);
+        host.removeEventListener('pointerdown', move);
+        host.removeEventListener('pointerleave', leave);
+        host.removeEventListener('pointercancel', leave);
+        if (stop) stop();
+      };
+    }
+  };
+
+
+  /* --------------------------------------------------------------------- */
+  /* Icon: web icons and noise, printed as a hex halftone                    */
+  /* --------------------------------------------------------------------- */
+
+  /* The tile prints one small picture at a time in a honeycomb of round dots: full dots inside the shape, a band of shrinking dots
+     where it fades out, nothing outside. The pictures are the everyday icons of a web page (home, heart, bell, mail, pin ...) and the
+     site's own favicon. Between two of them the tile scrambles: a short burst of random characters is printed in the same dots, then
+     the next icon settles in. Each dot eases toward the size its place needs, so the change is a ripple rather than a cut. */
+  var ICON_PATHS = {
+    home:   'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+    heart:  'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+    star:   'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+    bell:   'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+    mail:   'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+    pin:    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+    chat:   'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z',
+    lock:   'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z',
+    search: 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+    play:   'M8 5v14l11-7z'
+  };
+  var iconDots = {
+    id: 'icon',
+    label: 'Icon',
+    span: 'tile--1x2',
+    math: 'r = pitch \u00b7 coverage, on a honeycomb',
+    mount: function (host) {
+      var ORDER = ['favicon', 'home', 'heart', 'bell', 'mail', 'pin', 'chat', 'star', 'lock', 'search', 'play'];
+      var NOISE = '@#%&*?/<>{}[]01xX+=~';
+      var HOLD = 2.6, SCRAMBLE = 0.62, FRAME = 0.11;
+      var cache = {}, dots = [], gw = 0, gh = 0, pitch = 6;
+      var fav = new Image(), favOk = false;
+      fav.onload = function () { favOk = true; cache = {}; };
+      fav.src = 'assets/apple-touch-icon.png';
+      var idx = 0, phase = 'hold', phaseAt = 0, noiseKey = '', noiseAt = 0;
+      var ptr = { x: -999, y: -999, on: false };
+
+      function paintShape(c, w, h, key) {
+        var S = Math.min(w, h) * (key.charAt(0) === '#' ? 0.52 : 0.6), cx = w / 2, cy = h / 2;
+        c.clearRect(0, 0, w, h);
+        c.fillStyle = '#000';
+        if (key === 'favicon') {
+          c.beginPath(); c.arc(cx, cy, S * 0.5, 0, 6.2832);
+          if (favOk) { c.save(); c.clip(); c.drawImage(fav, cx - S * 0.5, cy - S * 0.5, S, S); c.restore(); } else { c.fill(); }
+        } else if (key.charAt(0) === '#') {
+          c.font = '800 ' + Math.round(S * 1.15) + 'px "Archivo", ui-monospace, monospace';
+          c.textAlign = 'center'; c.textBaseline = 'middle';
+          try { c.fontStretch = 'semi-condensed'; } catch (e) {}
+          c.fillText(key.slice(1), cx, cy + S * 0.04);
+        } else {
+          c.save(); c.translate(cx - S / 2, cy - S / 2); c.scale(S / 24, S / 24);
+          c.fill(new Path2D(ICON_PATHS[key]), 'evenodd'); c.restore();
+        }
+      }
+      function coverageFor(key, w, h) {
+        if (cache[key]) return cache[key];
+        var sw = Math.max(1, Math.round(w / 2)), sh = Math.max(1, Math.round(h / 2));
+        var cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
+        var c = cv.getContext('2d');
+        c.scale(0.5, 0.5);
+        paintShape(c, w, h, key);
+        var bl = document.createElement('canvas'); bl.width = sw; bl.height = sh;
+        var b = bl.getContext('2d');
+        try { b.filter = 'blur(1.6px)'; } catch (e) {}
+        b.drawImage(cv, 0, 0);
+        var data = b.getImageData(0, 0, sw, sh).data;
+        var out = new Float32Array(dots.length);
+        for (var i = 0; i < dots.length; i++) {
+          var x = Math.max(0, Math.min(sw - 1, Math.round(dots[i].hx / 2))), y = Math.max(0, Math.min(sh - 1, Math.round(dots[i].hy / 2)));
+          out[i] = data[(y * sw + x) * 4 + 3] / 255;
+        }
+        cache[key] = out;
+        return out;
+      }
+      function layout(w, h) {
+        gw = w; gh = h; cache = {}; dots = [];
+        pitch = Math.max(4.6, Math.min(6.4, w / 52));
+        var rowH = pitch * 0.866, rows = Math.ceil(h / rowH) + 1, cols = Math.ceil(w / pitch) + 1;
+        for (var j = 0; j < rows; j++) for (var i = 0; i < cols; i++) {
+          var x = i * pitch + (j % 2 ? pitch / 2 : 0) - pitch / 4, y = j * rowH;
+          if (x < -pitch || x > w + pitch || y < -pitch || y > h + pitch) continue;
+          dots.push({ hx: x, hy: y, r: 0 });
+        }
+      }
+      function keyNow(t) {
+        if (phase === 'hold') return ORDER[idx];
+        if (t - noiseAt > FRAME || !noiseKey) {
+          noiseAt = t;
+          noiseKey = '#' + NOISE.charAt(Math.floor(Math.random() * NOISE.length));
+        }
+        return noiseKey;
+      }
+      function skip() { phase = 'scramble'; phaseAt = -1; }
+      function move(e) { var b = host.getBoundingClientRect(); ptr.x = e.clientX - b.left; ptr.y = e.clientY - b.top; ptr.on = true; }
+      function leave() { ptr.on = false; }
+      host.addEventListener('pointermove', move);
+      host.addEventListener('pointerleave', leave);
+      host.addEventListener('click', skip);
+
+      var last = 0;
+      var stop = scene(host, function (ctx, w, h, t) {
+        if (!dots.length || w !== gw || h !== gh) layout(w, h);
+        var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
+        if (phaseAt === -1) phaseAt = t;
+        if (!still()) {
+          if (phase === 'hold' && t - phaseAt > HOLD) { phase = 'scramble'; phaseAt = t; }
+          else if (phase === 'scramble' && t - phaseAt > SCRAMBLE) { phase = 'hold'; phaseAt = t; idx = (idx + 1) % ORDER.length; noiseKey = ''; }
+        }
+        var cov = coverageFor(keyNow(t), w, h);
+        var k = Math.min(1, dt * (phase === 'scramble' ? 22 : 9));
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = tok('--c1') || '#1a73e8';
+        ctx.beginPath();
+        for (var n = 0; n < dots.length; n++) {
+          var d = dots[n], target = cov[n] < 0.06 ? 0 : pitch * 0.53 * Math.pow(cov[n], 0.9), sw = 1;
+          if (ptr.on) {
+            var dx = d.hx - ptr.x, dy = d.hy - ptr.y, q = 1 - Math.sqrt(dx * dx + dy * dy) / 60;
+            if (q > 0) sw = 1 + 0.5 * q * q;
+          }
+          d.r += (target * sw - d.r) * k;
+          if (d.r > 0.25) { ctx.moveTo(d.hx + d.r, d.hy); ctx.arc(d.hx, d.hy, d.r, 0, 6.2832); }
+        }
+        ctx.fill();
+        ctx.globalAlpha = 0.6; ctx.fillStyle = tok('--ink'); ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
+        ctx.textAlign = 'right'; ctx.fillText('click \u00b7 next icon', w - 14, 20);
+        ctx.globalAlpha = 1; ctx.textAlign = 'left';
+      });
+      return function () {
+        host.removeEventListener('pointermove', move);
+        host.removeEventListener('pointerleave', leave);
+        host.removeEventListener('click', skip);
+        if (stop) stop();
+      };
+    }
+  };
+
+  window.ART = [curves, ramp, iconDots, halftone, lattice];
   /* Pieces that get a page of their own rather than a cell in the bento. */
   window.ART_SOLO = [lame, pulse];
 })();

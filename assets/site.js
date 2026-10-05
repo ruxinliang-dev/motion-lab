@@ -1050,6 +1050,9 @@
     if (el.__decoded || calm()) return;
     el.__decoded = true;
     var original = el.innerHTML;
+    var dot = el.nextElementSibling && el.nextElementSibling.classList.contains('vc-dot') ? el.nextElementSibling : null;
+    if (dot) dot.style.visibility = 'hidden';
+    el.classList.add('is-decoding');
     var owner = el.closest('h1,h2') || el;
     var label = owner.textContent.replace(/\s+/g, ' ').trim();
     var letters = [];
@@ -1082,7 +1085,8 @@
       /* the letters settle fast at first and then more and more slowly: the gaps between them grow, so the line is mostly there after a
          second and the last few take their time. About 3s in all, with a little jitter so it is not a metronome. */
       var u = n > 1 ? i / (n - 1) : 0;
-      l.lock = 220 + 2600 * Math.pow(u, 2.2) + Math.random() * 200;
+      /* slow in the middle, quick again at the end: the last letters ("ing.") drop in one after another */
+      l.lock = 220 + 2600 * (0.4 * Math.pow(u, 2.2) + 0.6 * u * u * (3 - 2 * u)) + Math.random() * 160 * (1 - 0.7 * u);
       l.last = -1;
       l.punct = !/[A-Za-z0-9]/.test(l.ch);
     });
@@ -1092,7 +1096,7 @@
       done = 0;
       letters.forEach(function (l) {
         if (t >= l.lock) { if (l.el.textContent !== l.ch) l.el.textContent = l.ch; done++; return; }
-        var tick = Math.floor(t / 80);
+        var tick = Math.floor(t / 150);
         if (tick === l.last) return;
         l.last = tick;
         var r = Math.random(), g;
@@ -1100,11 +1104,23 @@
         else if (r < 0.34) g = ' ';
         else if (r < 0.68) g = pick(SYMBOLS);
         else { g = pick(LETTERS); if (/[A-Z]/.test(l.ch)) g = g.toUpperCase(); }
-        if (t > l.lock - 260 && r < 0.7) g = l.ch.toLowerCase() === l.ch ? pick(LETTERS) : pick(LETTERS).toUpperCase();   /* close to its moment it is nearly a letter */
+        if (t > l.lock - 170) g = l.ch;                           /* the real letter shows a moment before it is final, so it lands once, not after a string of near misses */
         l.el.textContent = g;
       });
       if (done < n) requestAnimationFrame(frame);
-      else { el.innerHTML = original; owner.removeAttribute('aria-label'); }
+      else if (!el.__landing) {
+        /* the letters glide together and the full stop fades in, then the real text is put back */
+        el.__landing = true;
+        if (dot) { dot.style.opacity = '0'; dot.style.visibility = ''; dot.style.transition = 'opacity .5s ease-out'; }
+        void el.offsetWidth;
+        el.classList.add('is-landing');
+        if (dot) dot.style.opacity = '1';
+        setTimeout(function () {
+          el.innerHTML = original; el.classList.remove('is-decoding', 'is-landing'); el.__landing = false;
+          if (dot) { dot.style.transition = ''; dot.style.opacity = ''; }
+          owner.removeAttribute('aria-label');
+        }, 560);
+      }
     }
     letters.forEach(function (l) { l.el.textContent = ' '; });
     requestAnimationFrame(frame);
@@ -1112,7 +1128,7 @@
 
   window.labDecode = decode;               /* handy for trying it on any element from the console */
   /* only "by vibe coding." in the intro headline */
-  var TARGETS = '.page--intro h1 em';
+  var TARGETS = '.page--intro h1 em .vc';
   function watch() {
     if (calm() || !('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {

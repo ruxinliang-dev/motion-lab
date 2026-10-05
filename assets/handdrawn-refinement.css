@@ -676,3 +676,11 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 /* text decode: a letter keeps its own width while it flickers, so the line does not jump */
 .dx{display:inline-block;white-space:pre;text-align:left;vertical-align:baseline}
 
+/* while "vibe coding" is being found its letters sit a little apart; they close up when it lands */
+.is-decoding .dx{margin-right:.07em}
+.is-decoding.is-landing .dx{margin-right:0;transition:margin-right .5s cubic-bezier(.2,.7,.2,1)}
+
+
+/* the Flow section: its heading used to span 40 grid rows, and those empty rows left a tall blank under the controls */
+.casesheet .page--flow--inline .section__head{grid-row:1 / span 1}
+.casesheet .page--flow--inline .section > .kp{grid-row:1}
