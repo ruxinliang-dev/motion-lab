@@ -87,7 +87,33 @@ window.MotionStudies = { create: function(c, miniature) {
   const kick=bell(t,1.21,1.64,3.65,inout);dot(cx+mix(190,250,kick),H/2+mix(106,-46,kick),18,ORANGE);
   stamp(4,'REBOUND','A little resistance makes it feel real.',t);
  }
- const draws=[arrive,release,exchange,rebound];
+ // A fixed alphabet forms a ring. Perspective and light move; the print never flickers.
+ const glyphs=['#','/','[]','*','●','▲','⬡','+','{}'];
+ const glyphRing=[];
+ for(let row=-15;row<=15;row++)for(let col=-15;col<=15;col++){
+  const x=col*28+(row%2?14:0),y=row*24.25;
+  const radius=Math.hypot(x,y);
+  if(radius>163&&radius<277){
+   const hash=Math.abs(col*31+row*71+col*row*13);
+   glyphRing.push({x,y,glyph:glyphs[hash%glyphs.length],edge:Math.min((radius-163)/24,(277-radius)/24,1),hash});
+  }
+ }
+ function glyphOrbit(t){
+  const phase=TAU*t/5,angle=Math.sin(phase)*.12,tilt=Math.sin(phase)*.12;
+  c.save();c.translate(W/2,H/2-6);c.rotate(angle);
+  c.textAlign='center';c.textBaseline='middle';
+  c.font='600 25px ui-monospace, Consolas, monospace';
+  glyphRing.forEach(p=>{
+   const depth=p.x/277;
+   const perspective=1+depth*tilt*.32;
+   c.globalAlpha=.35+.65*p.edge;
+   c.fillStyle=p.hash%7===0?INK:p.hash%4===0?'#58b6ce':BLUE;
+   c.fillText(p.glyph,p.x*perspective,p.y*perspective);
+  });
+  c.globalAlpha=1;c.restore();
+  stamp(5,'GLYPH ORBIT','An alphabet becomes a shape.',t);
+ }
+ const draws=[arrive,release,exchange,rebound,glyphOrbit];
  return function(index,time,width,height){
   c.save();c.clearRect(0,0,width,height);
   if(miniature){const scale=Math.min(width/1000,height/760);c.translate(width/2,height/2);c.scale(scale,scale);c.translate(-W/2,-H/2);}
@@ -95,3 +121,6 @@ window.MotionStudies = { create: function(c, miniature) {
   draws[index](time);c.restore();
  };
 }};
+
+
+

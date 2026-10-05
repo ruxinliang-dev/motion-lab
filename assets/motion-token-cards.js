@@ -43,3 +43,4 @@
   document.addEventListener('motionchange', sync);
   preference.addEventListener('change', sync);
 })();
+

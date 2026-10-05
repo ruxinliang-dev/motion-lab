@@ -684,3 +684,47 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 /* the Flow section: its heading used to span 40 grid rows, and those empty rows left a tall blank under the controls */
 .casesheet .page--flow--inline .section__head{grid-row:1 / span 1}
 .casesheet .page--flow--inline .section > .kp{grid-row:1}
+
+/* KeePlan cover: brand gradient, fixed icon anchors. */
+.pcard__art--keeplan{position:relative;background:#0b5fd0;isolation:isolate}
+.pcard__art--keeplan::before{content:"";position:absolute;inset:-9%;z-index:-1;background:linear-gradient(125deg,#073d8c 0%,#0b5fd0 40%,#008ebd 72%,#00b6d4 100%);background-size:160% 160%;transform:translate(var(--cover-x,0%),var(--cover-y,0%));transition:transform 1.3s cubic-bezier(.2,.7,.2,1);animation:kp-cover-flow 14s ease-in-out infinite alternate;animation-play-state:paused}
+.pcard__art--keeplan.kpc-visible::before{animation-play-state:running}
+.kpc-reveal{opacity:0;transition:opacity .9s ease var(--delay,0ms)}
+.kpc-visible .kpc-reveal{opacity:1}
+.kpc-feedback{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.kpc-i:hover .kpc-feedback{transform:rotate(5deg) scale(1.06)}
+.pcard:hover .kpc-plate,.pcard:focus-visible .kpc-plate{transform:none}
+@keyframes kp-cover-flow{from{background-position:15% 30%}to{background-position:75% 65%}}
+:root[data-motion="off"] .pcard__art--keeplan::before{animation:none;transition:none}
+:root[data-motion="off"] .kpc-reveal{opacity:1;transition:none}
+:root[data-motion="off"] .kpc-feedback{transition:none;transform:none}
+@media(prefers-reduced-motion:reduce){.pcard__art--keeplan::before{animation:none;transition:none}.kpc-reveal{opacity:1;transition:none}.kpc-feedback{transition:none;transform:none}}
+
+/* Generous pointer targets; feedback changes inside fixed icon anchors. */
+.pcard__art--keeplan .kpc-i{pointer-events:all}
+.kpc-hit{pointer-events:all}
+.pcard__art--keeplan .kpc-feedback{transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s ease}
+.pcard__art--keeplan .kpc-i:hover{opacity:1}
+.pcard__art--keeplan .kpc-i:hover .kpc-feedback{transform:scale(1.24) rotate(4deg);filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 7px rgba(153,233,255,.55))}
+.pcard__art--keeplan::before{transition:transform .55s cubic-bezier(.2,.7,.2,1)}
+@media(prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-i:hover .kpc-feedback{transform:none}}
+:root[data-motion="off"] .pcard__art--keeplan .kpc-i:hover .kpc-feedback{transform:none}
+
+/* The central mark arrives once, then responds only to direct interaction. */
+.pcard__art--keeplan .kpc-logo-enter{transform-box:fill-box;transform-origin:center;opacity:0;transform:scale(.96);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.pcard__art--keeplan.kpc-visible .kpc-logo-enter{opacity:1;transform:scale(1)}
+.pcard__art--keeplan .kpc-plate{pointer-events:all;transform-box:fill-box;transform-origin:center;transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s ease}
+.pcard__art--keeplan .kpc-plate:hover{transform:translateY(-3px) scale(1.05);filter:drop-shadow(0 5px 6px rgba(7,61,140,.24))}
+.pcard__art--keeplan .kpc-plate:active{transform:scale(.98);filter:drop-shadow(0 1px 2px rgba(7,61,140,.18));transition-duration:.12s}
+:root[data-motion="off"] .pcard__art--keeplan .kpc-logo-enter{opacity:1;transform:none;transition:none}
+:root[data-motion="off"] .pcard__art--keeplan .kpc-plate{transition:none}
+:root[data-motion="off"] .pcard__art--keeplan .kpc-plate:hover,:root[data-motion="off"] .pcard__art--keeplan .kpc-plate:active{transform:none}
+@media(prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-logo-enter{opacity:1;transform:none;transition:none}.pcard__art--keeplan .kpc-plate{transition:none}.pcard__art--keeplan .kpc-plate:hover,.pcard__art--keeplan .kpc-plate:active{transform:none}}
+
+/* A soft circular neighbourhood follows the pointer, without a visible ring. */
+.pcard__art--keeplan .kpc-i{transition:filter .3s ease;filter:brightness(calc(1 + var(--near,0)*.14))}
+.pcard__art--keeplan .kpc-i:hover{opacity:revert}
+.pcard__art--keeplan .kpc-feedback,
+.pcard__art--keeplan .kpc-i:hover .kpc-feedback{transform:translateY(calc(var(--near,0)*-2px)) scale(calc(1 + var(--near,0)*.13));filter:none;transition:transform .3s cubic-bezier(.2,.7,.2,1)}
+:root[data-motion="off"] .pcard__art--keeplan .kpc-feedback{transform:none;transition:none}
+@media(prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-feedback{transform:none;transition:none}}

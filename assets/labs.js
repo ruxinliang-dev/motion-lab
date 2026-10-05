@@ -1435,10 +1435,10 @@
   var morphField = {
     id: 'morph-field',
     n: '08',
-    title: 'A field that will not stay square',
+    title: 'A field that starts with circles',
     question: 'How much can a surface change under the pointer before it stops being one surface?',
     note:
-      '<p>It starts as one thing: a field of identical squares. Move across it ' +
+      '<p>It starts as one thing: a field of coloured circles. Move across it ' +
       'and each cell you touch becomes something else, once, and stays that way. ' +
       'Nothing resets on its own. After a minute the page is a composition you ' +
       'made by walking across it rather than by choosing anything.</p>' +
@@ -1476,7 +1476,7 @@
       var read = null, bar = null;
       if (big) {
         bar = el('div', 'morph__bar');
-        var reset = el('button', 'd-btn d-btn--quiet', 'All square again');
+        var reset = el('button', 'd-btn d-btn--quiet', 'All circles again');
         reset.type = 'button';
         reset.addEventListener('click', function () { build(true); });
         read = el('span', 'morph__read', '');
@@ -1490,7 +1490,7 @@
       /* The six diagram colours, plus ink. This is the one place on the site
          where all of them sit next to each other. */
       var INK = ['--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--ink'];
-      var base = superellipse(9, 0);                /* the square everything starts as */
+      var base = superellipse(2, 0);                /* every cell begins as a circle */
       var cells = [], touched = 0, ro = null, timer = 0;
 
       function report() {
@@ -1506,7 +1506,7 @@
 
         var path = document.createElementNS(NS, 'path');
         path.setAttribute('d', morphPath(base, size));
-        path.setAttribute('fill', 'rgba(0,0,0,.10)');
+        path.setAttribute('fill', tok(INK[cells.length % (INK.length - 1)]));
         svg.appendChild(path);
         cell.appendChild(svg);
 
@@ -1599,5 +1599,6 @@
     }
   };
 
-  window.LABS = [dayRamp, segmented, expand, stateButton, toasts, sheet, stagger, morphField];
+  morphField.n = '03';
+  window.LABS = [dayRamp, segmented, morphField, stateButton];
 })();

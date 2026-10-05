@@ -378,17 +378,18 @@
     ['--e-standard', 'Default. Anything that just needs to arrive.'],
     ['--e-out', 'Leaves fast, settles slowly. Cards, sheets, reveals.'],
     ['--e-in-out', 'Symmetric, so it reads the same played backwards.'],
-    ['--e-spring', 'Overshoots and returns. Small controls only.']
+    ['--e-spring', 'Overshoots and returns. Small controls only.'],
+    ['--e-in-out', 'Symbols build a ring. A quiet turn, then back again.']
   ];
 
   var tokenBox = document.getElementById('tokens');
   if (tokenBox) {
-    var studyNames = ['Arrive', 'Release', 'Exchange', 'Rebound'];
+    var studyNames = ['Arrive', 'Release', 'Exchange', 'Rebound', 'Glyph Orbit'];
     easings.forEach(function (pair, index) {
       var card = el('button', 'token token--study');
       card.type = 'button';
       card.dataset.motionStudy = index;
-      card.setAttribute('aria-label', 'Replay ' + studyNames[index] + ', five-second ' + pair[0] + ' study');
+      card.setAttribute('aria-label', 'Replay ' + studyNames[index] + ', ' + 'five' + '-second ' + pair[0] + ' study');
       var stage = el('div', 'token__study');
       var canvas = el('canvas');
       canvas.setAttribute('aria-hidden', 'true');
@@ -549,9 +550,9 @@
     function rows() {
       var icons = document.getElementById('iconcount');
       return [
-        [n('.page'), 'pages', 'across five chapters'],
+        [n('.deck .chapter > .page'), 'pages', 'across five chapters'],
         [n('.deck .grid .card'), 'experiments', 'each about one number'],
-        [n('.tile'), 'tiles', 'six equations'],
+        [n('.tile'), 'tiles', 'six studies'],
         [n('.flow__step'), 'screens', 'built at runtime'],
         [icons ? parseInt(icons.textContent, 10) || 0 : 0, 'icons', 'drawn as SVG paths'],
         [0, 'image files', 'none, anywhere']
@@ -1008,21 +1009,40 @@
       ['game', 252, 22, 1.05, 0, .55], ['moon', 332, 34, 1.2, 8, .7], ['bag', 200, 266, 1.0, -6, .5], ['zen', 292, 262, 1.15, 6, .6]
     ];
     var g = '';
-    ICONS.forEach(function (i) {
+    ICONS.forEach(function (i, index) {
       var d = art.icons[i[0]];
       if (!d) return;
       g += '<g class="kpc-i" transform="translate(' + i[1] + ' ' + i[2] + ') rotate(' + i[4] + ') scale(' + i[3] + ')" opacity="' + i[5] + '">' +
-           '<g transform="translate(-12 -12)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + d + '</g></g>';
+           '<circle class="kpc-hit" r="17" fill="transparent" stroke="none"/><g class="kpc-reveal" style="--delay:' + (index * 45) + 'ms"><g class="kpc-feedback"><g transform="translate(-12 -12)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + d + '</g></g></g></g>';
     });
     var mark = art.mark().replace('<svg class="kp-mark" viewBox="0 0 290 274" aria-hidden="true">', '<svg x="199" y="64" width="82" height="78" viewBox="0 0 290 274">');
     host.innerHTML =
       '<svg viewBox="0 0 480 285" preserveAspectRatio="xMidYMid slice" focusable="false">' +
-        '<circle cx="70" cy="262" r="130" fill="#fff" opacity=".06"/><circle cx="440" cy="30" r="100" fill="#fff" opacity=".07"/>' +
         g +
-        '<g class="kpc-plate"><rect x="178" y="48" width="124" height="124" rx="32" fill="#fff"/>' + mark + '</g>' +
+        '<g class="kpc-logo-enter"><g class="kpc-plate"><rect x="178" y="48" width="124" height="124" rx="32" fill="#fff"/>' + mark + '</g></g>' +
         '<text x="240" y="214" text-anchor="middle" font-family="Montserrat,Inter,system-ui,sans-serif" font-size="30" font-weight="800" letter-spacing="-.02em" fill="#fff">Kee<tspan fill-opacity=".82">Plan</tspan></text>' +
       '</svg>';
     host.setAttribute('data-built', '1');
+    var observer = new IntersectionObserver(function (entries) {
+      host.classList.toggle('kpc-visible', entries[0].isIntersecting);
+    }, {threshold:.15});
+    observer.observe(host);
+    host.addEventListener('pointermove', function (e) {
+      var r=host.getBoundingClientRect();
+      host.style.setProperty('--cover-x', ((e.clientX-r.left)/r.width-.5)*10+'%');
+      host.style.setProperty('--cover-y', ((e.clientY-r.top)/r.height-.5)*10+'%');
+      host.querySelectorAll('.kpc-i').forEach(function(icon){
+        var b=icon.getBoundingClientRect();
+        var distance=Math.hypot(e.clientX-(b.left+b.width/2),e.clientY-(b.top+b.height/2));
+        var radius=Math.max(55,r.width*.17), q=Math.max(0,1-distance/radius);
+        q=q*q*(3-2*q);
+        icon.style.setProperty('--near',q.toFixed(3));
+      });
+    });
+    host.addEventListener('pointerleave', function () {
+      host.style.setProperty('--cover-x','0%');host.style.setProperty('--cover-y','0%');
+      host.querySelectorAll('.kpc-i').forEach(function(icon){icon.style.setProperty('--near','0');});
+    });
   }
   window.addEventListener('load', function () { build(); setTimeout(build, 400); });
 })();
@@ -1149,3 +1169,4 @@
   }
   window.addEventListener('load', function () { setTimeout(watch, 60); });
 })();
+

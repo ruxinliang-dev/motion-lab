@@ -552,13 +552,15 @@
 
       function mixRgb(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
       function css(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+      function linearChannel(v){v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);}
+      function displayChannel(v){return 255*(v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055);}
       function sm(t) { t = Math.max(0, Math.min(1, t)); return t * t * t * (t * (t * 6 - 15) + 10); }
       var last = 0, scratch = null, sctx = null;
       var stop = scene(host, function (ctx, w, h, t) {
         var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
         S.ty = 0.5 + 0.22 * Math.sin(t * 0.5);
         S.y += (S.ty - S.y) * Math.min(1, dt * 3);
-        for (var i = 0; i < 3; i++) for (var k = 0; k < 3; k++) cur[i][k] += (tgt[i][k] - cur[i][k]) * Math.min(1, dt * 6);
+        for (var i = 0; i < 3; i++) for (var k = 0; k < 3; k++) cur[i][k] += (tgt[i][k] - cur[i][k]) * Math.min(1, dt * 4);
         geom.w = w; geom.h = h;
 
         var bg = toRgb((tok('--surface') || '#f4f3ee').length === 7 ? tok('--surface') : '#f4f3ee');
@@ -571,7 +573,8 @@
         var p1 = Math.min(0.9, 0.80 * sc + br), p2 = 0.52 * sc - br * 0.6, p3 = 0.24 * sc + br * 0.4;
         /* the field sits in a smaller box: room on the left for the swatch column, a margin on the other sides for the label and the line at the foot */
         var fx = 52, fy = 30, fw = Math.max(40, w - fx - 14), fh = Math.max(40, h - fy - 30);
-        var N = 160, cx = fx + fw / 2, cy = fy + fh / 2;
+        var N = 220, cx = fx + fw / 2, cy = fy + fh / 2;
+        var light = cur.map(function(color){return color.map(linearChannel);});
         /* The field is drawn on a half-size scratch canvas (the outer rings fade out by transparency instead of by mixing into the card),
            then printed as a honeycomb of round dots: the dot size follows the opacity, the dot colour follows the field. */
         var hw = Math.max(1, Math.round(w / 2)), hh = Math.max(1, Math.round(h / 2));
@@ -581,10 +584,12 @@
         for (var q = N; q >= 1; q--) {
           var dn = q / N;                                  /* 1 at the outer edge of the tile, 0 in the middle */
           var col, alp = 1;
-          if (dn >= p1) { col = cur[0]; alp = sm((1 - dn) / (1 - p1)); }   /* clear -> glow */
-          else if (dn >= p2) col = mixRgb(cur[0], cur[1], sm((p1 - dn) / (p1 - p2)));
-          else if (dn >= p3) col = mixRgb(cur[1], cur[2], sm((p2 - dn) / (p2 - p3)));
-          else col = cur[2];
+          // Broad overlapping colour fields replace isolated bands and hard colour stops.
+          var centres=[p1,p2,p3*.3],spread=sc*.235;
+          var weights=centres.map(function(centre){return Math.exp(-.5*Math.pow((dn-centre)/spread,2));});
+          var sum=weights[0]+weights[1]+weights[2];
+          col=[0,1,2].map(function(channel){return displayChannel((light[0][channel]*weights[0]+light[1][channel]*weights[1]+light[2][channel]*weights[2])/sum);});
+          if (dn >= p1) alp = sm((1 - dn) / (1 - p1));
           var hx = (fw / 2) * dn * 1.04, hy = (fh / 2) * dn * 1.04, rr = Math.min(hx, hy) * (0.62 + 0.38 * u);
           sctx.beginPath();
           if (sctx.roundRect) sctx.roundRect(cx - hx, cy - hy, hx * 2, hy * 2, rr); else sctx.rect(cx - hx, cy - hy, hx * 2, hy * 2);
@@ -1616,39 +1621,42 @@
     id: 'halftone',
     label: 'Halftone',
     span: 'tile--2x2',
-    math: 'r = pitch \u00b7 coverage^0.8,  push = (1 \u2212 d/R)\u00b2',
+    math: 'Move to explore \u00b7 click to edit',
     mount: function (host) {
-      var WORD = 'MOTION', DEFAULT = 'MOTION';
+      var WORD = 'Tone', DEFAULT = 'Tone';
       var dots = [], pitch = 6, W = 0, H = 0;
       var ptr = { x: -999, y: -999, on: false };
+      var drift = {x: .94, y: -.34};
       var seed = 7;
       function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
 
       function build(w, h) {
         W = w; H = h; dots = []; seed = 7;
-        pitch = Math.max(3.2, Math.min(4.4, w / 135));
+        pitch = Math.max(3.6, Math.min(6, w / 92));
         var off = document.createElement('canvas');
         off.width = Math.max(1, Math.round(w)); off.height = Math.max(1, Math.round(h));
         var c = off.getContext('2d');
         c.fillStyle = '#000'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-        var fam = '"Archivo", "Inter", system-ui, sans-serif';
+        var heading = document.querySelector('.hero h1, h1, h2');
+        var fam = heading ? getComputedStyle(heading).fontFamily : '"Archivo", system-ui, sans-serif';
         var size = 100;
         c.font = '800 ' + size + 'px ' + fam;
-        try { c.fontStretch = 'semi-condensed'; } catch (e) {}
+        try { c.fontStretch = 'normal'; } catch (e) {}
         var m = c.measureText(WORD);
-        size = Math.floor(size * (w * 0.88) / Math.max(1, m.width));
-        size = Math.min(size, h * 0.74);
+        size = Math.floor(size * (w * 0.80) / Math.max(1, m.width));
+        size = Math.min(size, h * 0.66);
         size = Math.floor(size * 0.94);
         c.font = '800 ' + size + 'px ' + fam;
-        try { c.fontStretch = 'semi-condensed'; c.letterSpacing = Math.round(size * 0.07) + 'px'; } catch (e) {}   /* open letter gaps keep the shapes readable in dots */
+        try { c.fontStretch = 'normal'; c.letterSpacing = '0px'; } catch (e) {}
         c.fillText(WORD, w / 2, h / 2 + size * 0.36);
         var img = c.getImageData(0, 0, off.width, off.height).data;
-        var cols = Math.floor(w / pitch), rows = Math.floor(h / pitch);
-        var ox = (w - cols * pitch) / 2 + pitch / 2, oy = (h - rows * pitch) / 2 + pitch / 2;
+        var rowPitch = pitch * 0.866;
+        var cols = Math.floor(w / pitch), rows = Math.floor(h / rowPitch);
+        var ox = (w - cols * pitch) / 2 + pitch / 2, oy = (h - rows * rowPitch) / 2 + rowPitch / 2;
         var cov = new Float32Array(cols * rows);
         for (var gy = 0; gy < rows; gy++) {
           for (var gx = 0; gx < cols; gx++) {
-            var x0 = Math.floor(ox + gx * pitch - pitch / 2), y0 = Math.floor(oy + gy * pitch - pitch / 2), sum = 0, cnt = 0;
+            var x0 = Math.floor(ox + gx * pitch + (gy%2 ? pitch/2 : 0) - pitch / 2), y0 = Math.floor(oy + gy * rowPitch - pitch / 2), sum = 0, cnt = 0;
             for (var yy = y0; yy < y0 + Math.ceil(pitch); yy += 2) {
               for (var xx = x0; xx < x0 + Math.ceil(pitch); xx += 2) {
                 if (xx < 0 || yy < 0 || xx >= off.width || yy >= off.height) continue;
@@ -1662,7 +1670,7 @@
            touching where the letters are, tiny everywhere else, and in between the size follows a softly blurred copy of the letters, so
            the edge fades out over a few rows instead of ending. Rows are staggered by half a pitch. Far from the letters a few dots go
            missing, which is what makes the sheet thin out toward its borders. */
-        var rMax = pitch * 0.5, rMin = Math.max(0.5, pitch * 0.11);
+        var rMax = pitch * 0.42;
         for (var j = 0; j < rows; j++) {
           for (var i = 0; i < cols; i++) {
             var bl = 0, wsum = 0;
@@ -1673,30 +1681,33 @@
               bl += cov[nj * cols + ni] * wgt; wsum += wgt;
             }
             bl = wsum ? bl / wsum : 0;
-            var hx = ox + i * pitch + (j % 2 ? pitch / 2 : 0), hy = oy + j * pitch;
+            var hx = ox + i * pitch + (j % 2 ? pitch / 2 : 0), hy = oy + j * rowPitch;
             if (hx > w) continue;
-            var q = Math.max(0, Math.min(1, (bl - 0.08) / 0.7));
-            q = q * q * (3 - 2 * q);
-            var r = rMin + (rMax - rMin) * q;
-            if (bl < 0.02) {
-              var edge = Math.min(hx, w - hx, hy, h - hy) / pitch;   /* rows from the tile's border */
-              if (rnd() < 0.18 + 0.5 * Math.max(0, 1 - edge / 7)) continue;
-              r = rMin * (0.55 + 0.6 * rnd());
-            }
-            dots.push({ hx: hx, hy: hy, ox: 0, oy: 0, vx: 0, vy: 0, r: r, k1: rnd(), k2: rnd() });
+            var coverage = cov[j*cols+i];
+            if (bl < .012 && coverage < .01) continue;
+            var q = Math.max(coverage, bl*.65);
+            var r = rMax*Math.pow(q,.72);
+            if (r < .18) continue;
+            dots.push({ hx: hx, hy: hy, ox: 0, oy: 0, vx: 0, vy: 0, r: r, amount:0 });
           }
         }
       }
 
       function move(e) {
         var b = host.getBoundingClientRect();
+        var nx=e.clientX-b.left, ny=e.clientY-b.top;
+        if(ptr.on){var mx=nx-ptr.x,my=ny-ptr.y,speed=Math.hypot(mx,my);if(speed>2){drift.x=mx/speed;drift.y=my/speed;}}
         ptr.x = e.clientX - b.left; ptr.y = e.clientY - b.top; ptr.on = true;
+        if (stop) stop.redraw();
       }
-      function leave() { ptr.on = false; }
+      function leave() { ptr.on = false; if (stop) stop.redraw(); }
+      function release(e) { if (e.pointerType !== 'mouse') leave(); }
+      host.style.touchAction = 'pan-y';
       host.addEventListener('pointermove', move);
       host.addEventListener('pointerdown', move);
       host.addEventListener('pointerleave', leave);
       host.addEventListener('pointercancel', leave);
+      host.addEventListener('pointerup', release);
 
       /* type to change the word: click the tile (or tab to it) and write; Escape puts MOTION back */
       var typing = false;
@@ -1704,13 +1715,14 @@
       host.setAttribute('role', 'img');
       host.setAttribute('aria-label', 'Halftone word. Click, then type to change it.');
       var field = document.createElement('input');
-      field.type = 'text'; field.maxLength = 8; field.autocapitalize = 'characters'; field.autocomplete = 'off'; field.spellcheck = false;
+      field.type = 'text'; field.maxLength = 8; field.autocapitalize = 'off'; field.autocomplete = 'off'; field.spellcheck = false;
       field.setAttribute('aria-label', 'Type a word for the halftone');
       field.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;pointer-events:none';
       host.appendChild(field);
       function setWord(v) {
-        v = (v || '').toUpperCase().replace(/[^A-Z0-9 .!?&+-]/g, '').slice(0, 8);
+        v = (v || '').replace(/[^A-Za-z0-9 .!?&+-]/g, '').slice(0, 8);
         WORD = v.trim() ? v : DEFAULT; built = false;
+        if (stop) stop.redraw();
       }
       function focusIt() { try { field.focus({ preventScroll: true }); } catch (e) { field.focus(); } }
       function onFocus() { typing = true; field.value = WORD === DEFAULT ? '' : WORD; }
@@ -1718,7 +1730,7 @@
       function onInput() { setWord(field.value); }
       function onKey(e) {
         e.stopPropagation();                               /* letters belong to the word, not to the page's shortcuts */
-        if (e.key === 'Escape') { field.value = ''; WORD = DEFAULT; built = false; field.blur(); }
+        if (e.key === 'Escape') { field.value = ''; WORD = DEFAULT; built = false; field.blur(); if (stop) stop.redraw(); }
       }
       function onClick() { focusIt(); }
       function onHostFocus() { focusIt(); }
@@ -1732,34 +1744,40 @@
 
       var last = 0, built = false;
       var stop = scene(host, function (ctx, w, h, t, fresh) {
-        if (!built || fresh || w !== W || h !== H) {
+        if (!built || w !== W || h !== H) {
           /* wait for the heading font if it has not arrived yet; the dots are rebuilt once when it does */
           build(w, h); built = true;
-          if (document.fonts && document.fonts.load) document.fonts.load('800 100px Archivo', 'MOTION').then(function () { built = false; });
         }
         var dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
         ctx.clearRect(0, 0, w, h);
-        var R = Math.max(90, Math.min(w, h) * 0.62);
-        var k = 7, c = 5.2, push = 62;          /* soft: the dots give way slowly and come back slowly */
+        var R = Math.max(48, Math.min(w*.28, h*.55));
+        var k = 100, c = 20, push = pitch*.28;
+        var moving = false;
+        ctx.filter = 'none';
         ctx.fillStyle = tok('--ink'); ctx.globalAlpha = 0.95;
         ctx.beginPath();
         for (var n = 0; n < dots.length; n++) {
-          var d = dots[n], tx = 0, ty = 0, grow = 1;
-          if (ptr.on) {
+          var d = dots[n], tx = 0, ty = 0, intensity=0;
+          if (ptr.on && !still()) {
             var dx = d.hx - ptr.x, dy = d.hy - ptr.y, dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < R) {
-              var f = 1 - dist / R; f = f * f * (3 - 2 * f); f *= f;   /* a soft edge: it eases in from nothing at the rim */
-              var inv = dist > 0.001 ? 1 / dist : 0;
-              /* the dots scatter: each leaves along its own slightly different direction and distance, and keeps its size, so the
-                 letters break up into drifting dots instead of fading out */
-              var m = 0.55 + 0.9 * d.k1, tg = (d.k2 - 0.5) * 1.1;
-              tx = (dx * inv * m - dy * inv * tg) * push * f; ty = (dy * inv * m + dx * inv * tg) * push * f; grow = 1 - 0.1 * f;
+              var edge = Math.max(0,Math.min(1,dist/R));
+              var f = 1-edge*edge*(3-2*edge);
+              // One smooth displacement field preserves the printed rows and columns.
+              tx = drift.x*push*f;
+              ty = drift.y*push*f;
+              intensity=f;
             }
           }
+          if (still()) { d.ox = d.oy = d.vx = d.vy = 0; }
           d.vx += ((tx - d.ox) * k - d.vx * c) * dt;
           d.vy += ((ty - d.oy) * k - d.vy * c) * dt;
           d.ox += d.vx * dt; d.oy += d.vy * dt;
-          var rr = d.r * (grow + 0.0);
+          if (Math.abs(tx-d.ox)+Math.abs(ty-d.oy)+Math.abs(d.vx)+Math.abs(d.vy) > .025) moving = true;
+          else { d.ox = tx; d.oy = ty; d.vx = d.vy = 0; }
+          d.amount+=(intensity-d.amount)*Math.min(1,dt*12);
+          if(Math.abs(intensity-d.amount)>.004)moving=true;else d.amount=intensity;
+          var rr = d.r*(1-.48*d.amount);
           var x = d.hx + d.ox, y = d.hy + d.oy;
           ctx.moveTo(x + rr, y);
           ctx.arc(x, y, rr, 0, 6.2832);
@@ -1768,7 +1786,10 @@
         ctx.globalAlpha = 0.6; ctx.font = '500 10.5px ' + (tok('--mono') || 'ui-monospace, monospace');
         ctx.textAlign = 'right'; ctx.fillText(typing ? 'typing \u00b7 esc resets' : 'click \u00b7 type a word', w - 14, 20);
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
-      });
+        host.dataset.halftoneState = moving ? 'responding' : 'idle';
+        return moving;
+      }, true);
+      if (document.fonts && document.fonts.load) document.fonts.load('800 100px Archivo', DEFAULT).then(function () { built = false; if (stop) stop.redraw(); });
       return function () {
         host.removeEventListener('click', onClick);
         host.removeEventListener('focus', onHostFocus);
@@ -1777,6 +1798,7 @@
         host.removeEventListener('pointerdown', move);
         host.removeEventListener('pointerleave', leave);
         host.removeEventListener('pointercancel', leave);
+        host.removeEventListener('pointerup', release);
         if (stop) stop();
       };
     }
@@ -1918,8 +1940,135 @@
     }
   };
 
-  window.ART = [curves, ramp, iconDots, halftone, lattice];
+
+  /* A small orthographic rain study: all geometry stays in SVG. */
+  var rain = {
+    id: 'rain', label: 'Rain', span: 'tile--1x2',
+    math: '',
+    mount: function (host) {
+      var ns = 'http://www.w3.org/2000/svg';
+      function node(tag, attrs, parent) {
+        var n = document.createElementNS(ns, tag);
+        Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+        (parent || svg).appendChild(n); return n;
+      }
+      var svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('viewBox', '0 0 320 240');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', 'Interactive rain on a shallow water plane');
+      host.appendChild(svg); host.style.touchAction = 'pan-y';
+      var hint = document.createElement('span');
+      hint.textContent = 'move · tap';
+      hint.style.cssText = 'position:absolute;top:14px;right:14px;max-width:70%;text-align:right;font:500 10.5px var(--mono);color:var(--ink-3);pointer-events:none;line-height:1.5';
+      host.appendChild(hint);
+      var controls=document.createElement('div');
+      controls.style.cssText='position:absolute;right:14px;top:32px;display:flex;gap:5px;z-index:3';
+      host.appendChild(controls);
+      var windLevel=1, rainLevel=1;
+      function control(label, change){
+        var button=document.createElement('button');button.type='button';
+        button.style.cssText='border:0;border-radius:99px;padding:4px 7px;background:color-mix(in srgb,var(--c1) 10%,var(--surface));color:var(--c1);font:500 10px var(--mono);cursor:pointer';
+        button.addEventListener('click',function(e){e.stopPropagation();change();wake();});
+        button.addEventListener('pointermove',function(e){e.stopPropagation();});
+        controls.appendChild(button);return button;
+      }
+      var windButton=control('Wind',function(){windLevel=(windLevel+1)%3;targetWind=[0,.16,.35][windLevel];labels();});
+      var rainButton=control('Rain',function(){rainLevel=(rainLevel+1)%3;targetAmount=[.08,.5,1][rainLevel];labels();});
+      function labels(){
+        windButton.textContent='Wind '+['0','1','2'][windLevel];rainButton.textContent='Rain '+['1','2','3'][rainLevel];
+        windButton.setAttribute('aria-label','Wind strength '+windLevel+'. Click to change.');
+        rainButton.setAttribute('aria-label','Rain amount '+(rainLevel+1)+'. Click to change.');
+      }
+      labels();
+      // Surface coordinates project into a diamond, shared by drops and rings.
+      function project(u, v) { return [160 + (u-v)*126, 116 + (u+v)*31]; }
+      var sides = node('g', {stroke:'none'});
+      var left = node('path', {d:'M34 147 L160 178 L160 200 L34 169 Z'}, sides);
+      var right = node('path', {d:'M160 178 L286 147 L286 169 L160 200 Z'}, sides);
+      var top = node('path', {d:'M160 116 L286 147 L160 178 L34 147 Z', stroke:'none'});
+      var rings = node('g', {fill:'none', 'stroke-width':'1.4', 'stroke-linecap':'round', 'stroke-dasharray':'.1 3.6'});
+      var dropsGroup = node('g', {'stroke-linecap':'round', 'stroke-width':'.8'});
+      var drops = [], ripples = [], wind = 0, targetWind = 0, amount = .55, targetAmount = .55;
+      var frame = 0, previous = 0, elapsed = 0, visible = false;
+      for (var i=0;i<56;i++) {
+        drops.push({u:Math.random(), v:Math.random(), phase:Math.random(), speed:.42+Math.random()*.22,
+          line:node('line', {}, dropsGroup)});
+      }
+      for (var j=0;j<22;j++) ripples.push({age:2, u:.5, v:.5, ring:node('ellipse', {opacity:0}, rings)});
+      function splash(u,v) {
+        var r = ripples.reduce(function(a,b){return a.age>b.age?a:b;});
+        r.u=u;r.v=v;r.age=0;
+      }
+      function palette() {
+        var dark=document.documentElement.getAttribute('data-theme')==='dark';
+        var azure=tok('--c1') || '#01b6ff', base=tok('--surface') || '#f5f4f1';
+        sides.setAttribute('stroke','none');top.setAttribute('stroke','none');
+        left.setAttribute('fill',mix(base,azure,dark?.25:.18));
+        right.setAttribute('fill',mix(base,azure,dark?.38:.30));
+        top.setAttribute('fill',mix(base,azure,dark?.18:.09));
+        rings.setAttribute('stroke',azure);dropsGroup.setAttribute('stroke',azure);
+      }
+      function draw(dt) {
+        wind+=(targetWind-wind)*Math.min(1,dt*4);
+        amount+=(targetAmount-amount)*Math.min(1,dt*3);
+        drops.forEach(function(d,i){
+          var active=i<Math.round(18+amount*38), old=d.phase;
+          if (!still()) d.phase=(d.phase+dt*d.speed*(.8+amount*.3))%1;
+          if (active && d.phase<old) {splash(d.u,d.v);d.u=Math.random();d.v=Math.random();}
+          var p=project(d.u,d.v), height=(1-d.phase)*101;
+          d.line.setAttribute('x1',p[0]-wind*height);
+          d.line.setAttribute('y1',p[1]-height);
+          d.line.setAttribute('x2',p[0]-wind*(height+9));
+          d.line.setAttribute('y2',p[1]-height-9);
+          d.line.setAttribute('opacity',active ? .18+.35*d.phase : 0);
+        });
+        ripples.forEach(function(r){
+          if (!still()) r.age+=dt;
+          var p=project(r.u,r.v), a=Math.min(1,r.age/1.4);
+          // Keep each ellipse within the projected water plane.
+          var room=Math.min(r.u,r.v,1-r.u,1-r.v);
+          var radius=Math.min(2+a*15,room*125);
+          r.ring.setAttribute('cx',p[0]);r.ring.setAttribute('cy',p[1]);
+          r.ring.setAttribute('rx',radius);r.ring.setAttribute('ry',radius*.246);
+          r.ring.setAttribute('opacity',a>=1?0:(1-a)*.9);
+        });
+      }
+      function tick(now) {
+        frame=0;if(!visible||still())return;
+        var dt=previous?Math.min(.05,(now-previous)/1000):1/30;
+        if(!previous||now-previous>=32){previous=now;elapsed+=dt;draw(dt);}
+        frame=requestAnimationFrame(tick);
+      }
+      function wake(){if(visible&&!still()&&!frame){previous=0;frame=requestAnimationFrame(tick);}}
+      function move(e){
+        var b=host.getBoundingClientRect();
+        targetWind=((e.clientX-b.left)/b.width-.5)*[0,.40,.85][windLevel];wake();
+      }
+      function tap(e){
+        var b=svg.getBoundingClientRect(), scale=Math.min(b.width/320,b.height/240);
+        var x=(e.clientX-b.left-(b.width-320*scale)/2)/scale;
+        var y=(e.clientY-b.top-(b.height-240*scale)/2)/scale;
+        var u=((x-160)/126+(y-116)/31)/2, v=((y-116)/31-(x-160)/126)/2;
+        if(u>0&&u<1&&v>0&&v<1){splash(u,v);draw(0);wake();}
+      }
+      function motion(){cancelAnimationFrame(frame);frame=0;draw(0);wake();}
+      var io=new IntersectionObserver(function(entries){visible=entries[0].isIntersecting;
+        if(visible)wake();else{cancelAnimationFrame(frame);frame=0;previous=0;}});
+      io.observe(host);palette();splash(.42,.54);draw(0);
+      host.addEventListener('pointermove',move);host.addEventListener('click',tap);
+      document.addEventListener('motionchange',motion);document.addEventListener('themechange',palette);
+      return function(){io.disconnect();cancelAnimationFrame(frame);host.removeEventListener('pointermove',move);
+        host.removeEventListener('click',tap);document.removeEventListener('motionchange',motion);
+        document.removeEventListener('themechange',palette);svg.remove();hint.remove();controls.remove();};
+    }
+  };
+  lattice.span = 'tile--1x2';
+
+  window.ART = [curves, ramp, iconDots, halftone, lattice, rain];
   /* Pieces that get a page of their own rather than a cell in the bento. */
   window.ART_SOLO = [lame, pulse];
 })();
+
+
+
 
