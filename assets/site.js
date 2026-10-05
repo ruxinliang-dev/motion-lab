@@ -1028,7 +1028,7 @@
 })();
 
 /* Text decode, after the Kimi type-system film: a heading arrives as random letters that lock into place one after another, left to
-   right (about 0.9s in all). Used for the intro headline, the page titles and the chapter names under it. It runs once per element, when
+   right (about 0.9s in all). Used for the biggest headline only: the intro's, and a project page's. It runs once per element, when
    the element first comes into view, never under reduced motion, and the heading keeps its real text for screen readers. Each letter is
    given its final width while it flickers, so nothing around it moves. */
 (function () {
@@ -1097,7 +1097,8 @@
   }
 
   window.labDecode = decode;               /* handy for trying it on any element from the console */
-  var TARGETS = '.page--intro .eyebrow, .page--intro h1, .page .section__head h2, .page .phero h1, .guide a > b, .casesheet .section__head h2, .casesheet .phero h1';
+  /* only the biggest headline of a page: the intro's, and a project's */
+  var TARGETS = '.page--intro h1, .casesheet .phero h1';
   function watch() {
     if (calm() || !('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {
@@ -1105,8 +1106,7 @@
         if (!en.isIntersecting || html.classList.contains('booting')) return;
         var el = en.target;
         io.unobserve(el);
-        var rank = el.matches('.eyebrow') ? 0 : el.matches('h1') ? 140 : el.matches('.guide a > b') ? 380 + [].indexOf.call(el.closest('.guide').children, el.parentNode) * 90 : 80;
-        decode(el, rank);
+        decode(el, 120);
       });
     }, { threshold: 0.6 });
     [].slice.call(document.querySelectorAll(TARGETS)).forEach(function (el) { io.observe(el); });
