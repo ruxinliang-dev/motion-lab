@@ -1027,14 +1027,16 @@
   window.addEventListener('load', function () { build(); setTimeout(build, 400); });
 })();
 
-/* Text decode, after the Kimi type-system film: a heading arrives as random letters that lock into place one after another, left to
-   right (about 0.9s in all). Used for the biggest headline only: the intro's, and a project page's. It runs once per element, when
-   the element first comes into view, never under reduced motion, and the heading keeps its real text for screen readers. Each letter is
-   given its final width while it flickers, so nothing around it moves. */
+/* Text decode, after the Kimi type-system film: "by vibe coding." in the intro headline is not typed, it is found. Every letter starts as a
+   blank, then flickers through blanks, symbols and wrong letters, and locks into place at its own moment: the order is only loosely left to
+   right, so the line fills in unevenly, and the whole thing takes about 4.5 seconds. It runs once, when the headline first comes into view,
+   never under reduced motion, and the heading keeps its real text for screen readers. Each letter keeps its final width while it flickers,
+   so nothing around it moves. */
 (function () {
   'use strict';
   var html = document.documentElement;
-  var GLYPHS = 'ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghkmnopqrstuvwxyz0123456789';
+  var LETTERS = 'abcdefghkmnopqrstuvwxyz';
+  var SYMBOLS = '@#$%&*+=/\\|<>[]{}~^?!;:_-\u00b7\u00d7\u2192\u2191\u2198\u00a7\u00b6';
   function calm() {
     return html.getAttribute('data-motion') === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -1043,12 +1045,13 @@
     while ((n = w.nextNode())) if (n.nodeValue.trim()) out.push(n);
     return out;
   }
+  function pick(str) { return str.charAt(Math.floor(Math.random() * str.length)); }
   function decode(el, delay) {
     if (el.__decoded || calm()) return;
     el.__decoded = true;
     var original = el.innerHTML;
-    var label = el.textContent.replace(/\s+/g, ' ').trim();
-    if (!label || label.length > 70) return;
+    var owner = el.closest('h1,h2') || el;
+    var label = owner.textContent.replace(/\s+/g, ' ').trim();
     var letters = [];
     textNodes(el).forEach(function (node) {
       var frag = document.createDocumentFragment();
@@ -1063,50 +1066,58 @@
           sp.className = 'dx';
           sp.textContent = ch;
           word.appendChild(sp);
-          if (/[A-Za-z0-9]/.test(ch)) letters.push({ el: sp, ch: ch });
+          letters.push({ el: sp, ch: ch });
         });
         frag.appendChild(word);
       });
       node.parentNode.replaceChild(frag, node);
     });
-    el.setAttribute('aria-label', label);
-    /* give each letter its final width before anything is scrambled */
+    owner.setAttribute('aria-label', label);
+    /* give each letter its final width before anything changes */
     letters.forEach(function (l) { l.w = l.el.getBoundingClientRect().width; });
     letters.forEach(function (l) { l.el.style.width = l.w + 'px'; });
-    var n = letters.length, step = Math.min(30, 900 / Math.max(1, n));
+    var n = letters.length, step = 3000 / Math.max(1, n);
     var t0 = performance.now() + (delay || 0), done = 0;
-    letters.forEach(function (l, i) { l.lock = i * step + Math.random() * 90; l.last = -1; });
+    letters.forEach(function (l, i) {
+      /* loosely left to right: a letter can lock well before or after its neighbours; the last ones settle at about 4.5s */
+      l.lock = Math.min(4500, 500 + i * step + Math.random() * 1400);
+      l.last = -1;
+      l.punct = !/[A-Za-z0-9]/.test(l.ch);
+    });
     function frame(now) {
       var t = now - t0;
       if (t < 0) { requestAnimationFrame(frame); return; }
       done = 0;
       letters.forEach(function (l) {
         if (t >= l.lock) { if (l.el.textContent !== l.ch) l.el.textContent = l.ch; done++; return; }
-        var tick = Math.floor(t / 46);
-        if (tick !== l.last) {
-          l.last = tick;
-          var g = GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length));
-          l.el.textContent = /[a-z]/.test(l.ch) ? g.toLowerCase() : g;
-        }
+        var tick = Math.floor(t / 80);
+        if (tick === l.last) return;
+        l.last = tick;
+        var r = Math.random(), g;
+        if (t < 350) g = ' ';                                   /* it opens on blanks */
+        else if (r < 0.34) g = ' ';
+        else if (r < 0.68) g = pick(SYMBOLS);
+        else { g = pick(LETTERS); if (/[A-Z]/.test(l.ch)) g = g.toUpperCase(); }
+        if (t > l.lock - 380 && r < 0.7) g = l.ch.toLowerCase() === l.ch ? pick(LETTERS) : pick(LETTERS).toUpperCase();   /* close to its moment it is nearly a letter */
+        l.el.textContent = g;
       });
       if (done < n) requestAnimationFrame(frame);
-      else { el.innerHTML = original; el.removeAttribute('aria-label'); }
+      else { el.innerHTML = original; owner.removeAttribute('aria-label'); }
     }
     letters.forEach(function (l) { l.el.textContent = ' '; });
     requestAnimationFrame(frame);
   }
 
   window.labDecode = decode;               /* handy for trying it on any element from the console */
-  /* only the biggest headline of a page: the intro's, and a project's */
-  var TARGETS = '.page--intro h1, .casesheet .phero h1';
+  /* only "by vibe coding." in the intro headline */
+  var TARGETS = '.page--intro h1 em';
   function watch() {
     if (calm() || !('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
         if (!en.isIntersecting || html.classList.contains('booting')) return;
-        var el = en.target;
-        io.unobserve(el);
-        decode(el, 120);
+        io.unobserve(en.target);
+        decode(en.target, 450);
       });
     }, { threshold: 0.6 });
     [].slice.call(document.querySelectorAll(TARGETS)).forEach(function (el) { io.observe(el); });
@@ -1120,4 +1131,3 @@
   }
   window.addEventListener('load', function () { setTimeout(watch, 60); });
 })();
-
