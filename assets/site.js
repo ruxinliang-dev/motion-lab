@@ -1029,7 +1029,7 @@
 
 /* Text decode, after the Kimi type-system film: "by vibe coding." in the intro headline is not typed, it is found. Every letter starts as a
    blank, then flickers through blanks, symbols and wrong letters, and locks into place at its own moment: the order is only loosely left to
-   right, so the line fills in unevenly, and the whole thing takes about 4.5 seconds. It runs once, when the headline first comes into view,
+   right, so the line fills in unevenly, and the whole thing takes about 3 seconds, quick at first and slower toward the end. It runs once, when the headline first comes into view,
    never under reduced motion, and the heading keeps its real text for screen readers. Each letter keeps its final width while it flickers,
    so nothing around it moves. */
 (function () {
@@ -1076,11 +1076,13 @@
     /* give each letter its final width before anything changes */
     letters.forEach(function (l) { l.w = l.el.getBoundingClientRect().width; });
     letters.forEach(function (l) { l.el.style.width = l.w + 'px'; });
-    var n = letters.length, step = 3000 / Math.max(1, n);
+    var n = letters.length;
     var t0 = performance.now() + (delay || 0), done = 0;
     letters.forEach(function (l, i) {
-      /* loosely left to right: a letter can lock well before or after its neighbours; the last ones settle at about 4.5s */
-      l.lock = Math.min(4500, 500 + i * step + Math.random() * 1400);
+      /* the letters settle fast at first and then more and more slowly: the gaps between them grow, so the line is mostly there after a
+         second and the last few take their time. About 3s in all, with a little jitter so it is not a metronome. */
+      var u = n > 1 ? i / (n - 1) : 0;
+      l.lock = 220 + 2600 * Math.pow(u, 2.2) + Math.random() * 200;
       l.last = -1;
       l.punct = !/[A-Za-z0-9]/.test(l.ch);
     });
@@ -1094,11 +1096,11 @@
         if (tick === l.last) return;
         l.last = tick;
         var r = Math.random(), g;
-        if (t < 350) g = ' ';                                   /* it opens on blanks */
+        if (t < 180) g = ' ';                                   /* it opens on blanks */
         else if (r < 0.34) g = ' ';
         else if (r < 0.68) g = pick(SYMBOLS);
         else { g = pick(LETTERS); if (/[A-Z]/.test(l.ch)) g = g.toUpperCase(); }
-        if (t > l.lock - 380 && r < 0.7) g = l.ch.toLowerCase() === l.ch ? pick(LETTERS) : pick(LETTERS).toUpperCase();   /* close to its moment it is nearly a letter */
+        if (t > l.lock - 260 && r < 0.7) g = l.ch.toLowerCase() === l.ch ? pick(LETTERS) : pick(LETTERS).toUpperCase();   /* close to its moment it is nearly a letter */
         l.el.textContent = g;
       });
       if (done < n) requestAnimationFrame(frame);
