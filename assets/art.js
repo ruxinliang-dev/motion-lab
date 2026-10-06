@@ -597,17 +597,51 @@
           sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = alp; sctx.fillStyle = css(col); sctx.fill(); sctx.globalAlpha = 1;
         }
         var sd = sctx.getImageData(0, 0, hw, hh).data;
-        var pit = Math.max(3.6, Math.min(4.8, w / 85)), rowH = pit * 0.866;
-        for (var jy = 0, ry = 0; ry < h + pit; jy++, ry = jy * rowH) {
-          for (var ix = 0, rx = (jy % 2 ? pit / 2 : 0); rx < w + pit; ix++, rx = ix * pit + (jy % 2 ? pit / 2 : 0)) {
+        /* printed as a shape ramp on a square grid: the deeper the colour, the heavier the shape (dot, ring, diamond, rounded square, block),
+           and now and then a cell is a code glyph (plus, slash, bracket, chevron) that swaps for another one every second or two */
+        var pit = Math.max(8, Math.min(11, w / 30));
+        for (var jy = 0; jy * pit < h; jy++) {
+          for (var ix = 0; ix * pit < w; ix++) {
+            var rx = ix * pit + pit / 2, ry = jy * pit + pit / 2;
             var px = Math.round(rx / 2), py = Math.round(ry / 2);
             if (px < 0 || py < 0 || px >= hw || py >= hh) continue;
             var di = (py * hw + px) * 4, al = sd[di + 3] / 255;
             if (al < 0.05) continue;
-            var rd = pit * 0.57 * Math.pow(al, 0.55);
-            if (rd < 0.45) continue;
-            ctx.fillStyle = 'rgb(' + sd[di] + ',' + sd[di + 1] + ',' + sd[di + 2] + ')';
-            ctx.beginPath(); ctx.arc(rx, ry, rd, 0, 6.2832); ctx.fill();
+            var ddx = (rx - cx) / (fw / 2), ddy = (ry - cy) / (fh / 2), dd = Math.min(1, Math.sqrt(ddx * ddx + ddy * ddy));
+            var v = al * (0.4 + 0.6 * Math.pow(1 - dd * 0.85, 0.5));
+            if (v < 0.07) continue;
+            var hs = Math.sin(ix * 127.1 + jy * 311.7) * 43758.5453; hs -= Math.floor(hs);
+            var col = 'rgb(' + sd[di] + ',' + sd[di + 1] + ',' + sd[di + 2] + ')', r = pit * 0.46;
+            ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.save(); ctx.translate(rx, ry);
+            /* Most cells are plain circles whose size follows the colour. A few cells near the middle are "live": each one, on its own clock, jumps between a small code glyph, another small shape and a circle, and some steps it is simply a circle, so the code appears and disappears at random. */
+            var live = hs > 0.84 + dd * 0.3 && dd < 0.6 && v > 0.25, kind = -1, pop = 1;
+            if (live) {
+              var step = Math.floor(t * 1.1 + hs * 40), ph = t * 1.1 + hs * 40 - step;
+              var rnd = Math.sin(step * 12.9898 + hs * 78.233) * 43758.5453; rnd -= Math.floor(rnd);
+              if (rnd < 0.62) kind = Math.floor(rnd / 0.62 * 11);              /* 0-6 glyphs, 7-10 other small shapes */
+              pop = ph < 0.2 ? 0.55 + 0.45 * Math.sin(ph / 0.2 * 1.5708) + 0.25 * Math.sin(ph / 0.2 * 3.1416) : 1;
+            }
+            if (kind >= 0) {
+              var q = r * 0.62 * pop;
+              ctx.lineWidth = 1.3; ctx.scale(1, 1); ctx.beginPath();
+              if (kind === 0) { ctx.moveTo(-q, 0); ctx.lineTo(q, 0); ctx.moveTo(0, -q); ctx.lineTo(0, q); }
+              else if (kind === 1) { ctx.moveTo(-q * .6, q); ctx.lineTo(q * .6, -q); }
+              else if (kind === 2) { ctx.moveTo(-q * .2, -q); ctx.lineTo(-q * .8, -q); ctx.lineTo(-q * .8, q); ctx.lineTo(-q * .2, q); }
+              else if (kind === 3) { ctx.moveTo(q * .2, -q); ctx.lineTo(q * .8, -q); ctx.lineTo(q * .8, q); ctx.lineTo(q * .2, q); }
+              else if (kind === 4) { ctx.moveTo(-q * .3, -q * .8); ctx.lineTo(q * .7, 0); ctx.lineTo(-q * .3, q * .8); }
+              else if (kind === 5) { ctx.moveTo(q * .3, -q * .8); ctx.lineTo(-q * .7, 0); ctx.lineTo(q * .3, q * .8); }
+              else if (kind === 6) { ctx.moveTo(-q * .7, -q * .7); ctx.lineTo(q * .7, q * .7); ctx.moveTo(q * .7, -q * .7); ctx.lineTo(-q * .7, q * .7); }
+              if (kind <= 6) ctx.stroke();
+              else if (kind === 7) { ctx.arc(0, 0, q * 0.9, 0, 6.2832); ctx.stroke(); }
+              else if (kind === 8) { ctx.rotate(Math.PI / 4); ctx.fillRect(-q * .6, -q * .6, q * 1.2, q * 1.2); }
+              else if (kind === 9) { if (ctx.roundRect) { ctx.roundRect(-q * .75, -q * .75, q * 1.5, q * 1.5, q * .4); ctx.fill(); } else ctx.fillRect(-q * .75, -q * .75, q * 1.5, q * 1.5); }
+              else { ctx.arc(0, 0, q * 0.35, 0, 6.2832); ctx.fill(); }
+            } else {
+              var cv2 = v < 0.3 ? v * 0.9 : 0.27 + (v - 0.3) * 0.62, rc = r * (0.2 + 0.7 * Math.min(1, cv2 / 0.7)) * pop;
+              ctx.beginPath(); ctx.arc(0, 0, rc, 0, 6.2832); ctx.fill();
+            }
+            ctx.restore();
           }
         }
 

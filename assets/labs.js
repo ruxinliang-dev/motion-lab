@@ -194,8 +194,9 @@
   }
 
   /* Temperature sets the base colour. Six anchors, interpolated. */
-  var TEMP_STOPS = [[-12, '#22407e'], [0, '#3f7ec4'], [9, '#5fb0a6'],
-                    [17, '#c4bd6e'], [25, '#df8c46'], [35, '#c9452f']];
+  /* The anchors are the site's own colours (azure, green, yellow, orange), so a week looks like part of the page and not like a weather app. */
+  var TEMP_STOPS = [[-12, '#0a7fd1'], [0, '#01b6ff'], [9, '#24cc71'],
+                    [17, '#fafd5d'], [25, '#fe7236'], [35, '#e8453a']];
   function tempColour(t) {
     if (t <= TEMP_STOPS[0][0]) return TEMP_STOPS[0][1];
     for (var i = 0; i < TEMP_STOPS.length - 1; i++) {
@@ -225,7 +226,8 @@
   function dayColour(temp, code) {
     var base = toHsl(tempColour(temp));
     var w = wx(code);
-    return fromHsl(base[0] + (w[2] < -8 ? -10 : 0), base[1] * w[1], base[2] + w[2] / 100);
+    /* the sky still moves saturation and lightness, but only a little: grey weather used to turn the whole card to mud */
+    return fromHsl(base[0] + (w[2] < -8 ? -8 : 0), base[1] * (0.82 + 0.18 * Math.min(1.2, w[1])), base[2] + w[2] / 260);
   }
 
   /* Three overcast days seven degrees apart come out almost the same colour,
@@ -274,8 +276,8 @@
     return hs.map(function (c, i) {
       return fromHsl(
         H[i],
-        Math.min(0.80, Math.max(0.10, S[i] + 0.05)),
-        Math.min(0.86, Math.max(0.13, L[i]))
+        Math.min(1, Math.max(0.72, S[i] + 0.25)),
+        Math.min(0.72, Math.max(0.46, L[i]))
       );
     });
   }
@@ -398,6 +400,30 @@
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   }
 
+  /* One printed cell. v (0..1) picks the shape; hs (0..1, fixed per cell) picks which cells are code glyphs and when each one changes. */
+  function codeCell(g, x, y, r, v, hs, col, t) {
+    g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 1.6; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.save(); g.translate(x, y);
+    if (hs > 0.88 && v > 0.3) {
+      var st = Math.floor(t * 0.7 + hs * 40), ph = t * 0.7 + hs * 40 - st;
+      var gk = (st * 7 + Math.floor(hs * 1000)) % 7, pop = ph < 0.18 ? 1 + 0.5 * Math.sin(ph / 0.18 * 3.1416) : 1;
+      g.scale(pop, pop); g.beginPath();
+      if (gk === 0) { g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, -r); g.lineTo(0, r); }
+      else if (gk === 1) { g.moveTo(-r * .6, r); g.lineTo(r * .6, -r); }
+      else if (gk === 2) { g.moveTo(-r * .2, -r); g.lineTo(-r * .8, -r); g.lineTo(-r * .8, r); g.lineTo(-r * .2, r); }
+      else if (gk === 3) { g.moveTo(r * .2, -r); g.lineTo(r * .8, -r); g.lineTo(r * .8, r); g.lineTo(r * .2, r); }
+      else if (gk === 4) { g.moveTo(-r * .3, -r * .8); g.lineTo(r * .7, 0); g.lineTo(-r * .3, r * .8); }
+      else if (gk === 5) { g.moveTo(r * .3, -r * .8); g.lineTo(-r * .7, 0); g.lineTo(r * .3, r * .8); }
+      else { g.moveTo(-r * .7, -r * .7); g.lineTo(r * .7, r * .7); g.moveTo(r * .7, -r * .7); g.lineTo(-r * .7, r * .7); }
+      g.stroke();
+    } else if (v < 0.22) { g.beginPath(); g.arc(0, 0, r * 0.28, 0, 6.2832); g.fill(); }
+    else if (v < 0.42) { g.beginPath(); g.arc(0, 0, r * 0.7, 0, 6.2832); g.lineWidth = 1.5; g.stroke(); }
+    else if (v < 0.62) { g.rotate(Math.PI / 4); g.fillRect(-r * .62, -r * .62, r * 1.24, r * 1.24); }
+    else if (v < 0.82) { g.beginPath(); if (g.roundRect) g.roundRect(-r, -r, r * 2, r * 2, r * .5); else g.rect(-r, -r, r * 2, r * 2); g.fill(); }
+    else { g.fillRect(-r, -r, r * 2, r * 2); }
+    g.restore();
+  }
+
   var dayRamp = {
     id: 'day-ramp',
     n: '01',
@@ -463,6 +489,8 @@
       var wrap = el('div', 'demo demo--flush');
       var panel = el('div', 'ramp' + (big ? ' is-big' : ''));
       var paint = el('div', 'ramp__paint');
+      var dotsCv = document.createElement('canvas');
+      paint.appendChild(dotsCv);
       var grain = el('div', 'ramp__grain');
       var type = el('div', 'ramp__type');
       var legend = el('div', 'ramp__legend');
@@ -479,7 +507,7 @@
 
       var city = CITIES[0];
       var lang = LANGS[0];
-      var font = pickFont(lang);
+      var font = 'Archivo';           /* the site's own face is the default; New type shuffles */
       var data = estimate(city);
       var live = false;
       var hexOut = null, cityBtns = [];
@@ -525,7 +553,7 @@
         langBtn.style.borderColor = 'rgba(255,255,255,.35)';
         langBtn.addEventListener('click', function () {
           lang = pickFrom(LANGS, lang);
-          font = pickFont(lang);
+          font = lang[2] === 'latin' && lang[0] === 'en-GB' ? 'Archivo' : pickFont(lang);
           loadFonts([font], paintAll);
           paintAll();
         });
@@ -537,6 +565,84 @@
         bar.appendChild(fnames);
         foot.appendChild(bar);
       }
+
+      var lastCols = null;
+      /* The colour field is printed as a shape ramp on a square grid: yesterday travels to tomorrow across the card, today is a glow in the
+         middle, and the printed element gets heavier with the colour (a speck, a ring, then dots that grow until they nearly touch). The panel
+         fades out toward a rounded edge. */
+      /* How the dots move depends on the weather of the day they sit under. amp is the size swing (never above 14%), speed is radians per second, flow is how much of the motion
+         travels down the card (rain and snow) instead of along the colour ramp. Clear sky: a quick fine shimmer. Overcast and fog: almost still. Drizzle and rain: ripples that fall. */
+      function wxMotion(code) {
+        if (code === 0 || code === 1) return { amp: 0.10, speed: 0.55, flow: 0.0 };
+        if (code === 2) return { amp: 0.08, speed: 0.38, flow: 0.0 };
+        if (code === 3 || code === 45 || code === 48) return { amp: 0.05, speed: 0.22, flow: 0.0 };
+        if (code >= 51 && code <= 57) return { amp: 0.09, speed: 0.50, flow: 0.5 };
+        if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { amp: 0.12, speed: 0.70, flow: 1.0 };
+        if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { amp: 0.08, speed: 0.30, flow: 0.4 };
+        if (code >= 95) return { amp: 0.14, speed: 0.90, flow: 1.0 };
+        return { amp: 0.08, speed: 0.35, flow: 0.0 };
+      }
+      function lerpMo(a, b, k) { return { amp: a.amp + (b.amp - a.amp) * k, speed: a.speed + (b.speed - a.speed) * k, flow: a.flow + (b.flow - a.flow) * k }; }
+      function drawDots(cols, t) {
+        var w = panel.clientWidth, h = panel.clientHeight;
+        if (!cols || w < 20 || h < 20) return;
+        t = t || 0;
+        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        if (dotsCv.width !== Math.round(w * dpr) || dotsCv.height !== Math.round(h * dpr)) { dotsCv.width = Math.round(w * dpr); dotsCv.height = Math.round(h * dpr); }
+        var g = dotsCv.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, w, h);
+        var moving = !still() && data && data.length > 2;
+        var m0 = moving ? wxMotion(data[0].code) : null, m1 = moving ? wxMotion(data[1].code) : null, m2 = moving ? wxMotion(data[2].code) : null;
+        var pit = Math.max(8, Math.min(11, w / 30));
+        var ang = 107 * Math.PI / 180, ax = Math.sin(ang), ay = -Math.cos(ang);
+        var plen = Math.abs(w * ax) + Math.abs(h * ay);
+        for (var j = 0; j * pit < h + pit; j++) {
+          for (var i = 0; i * pit < w + pit; i++) {
+            var x = i * pit + pit / 2, y = j * pit + pit / 2;
+            var nx = (x - w / 2) / (w / 2), ny = (y - h * 0.47) / (h / 2);
+            var d = Math.pow(Math.pow(Math.abs(nx), 4) + Math.pow(Math.abs(ny), 4), 0.25);   /* a rounded square */
+            var fade = 1 - Math.max(0, Math.min(1, (d - 0.62) / 0.5));
+            fade = fade * fade * (3 - 2 * fade);
+            var tt = Math.max(0, Math.min(1, ((x - w / 2) * ax + (y - h / 2) * ay) / plen + 0.5));
+            var glow = Math.max(0, 1 - Math.sqrt(nx * nx * 0.8 + ny * ny) / 0.8);
+            glow = glow * glow * (3 - 2 * glow);
+            var v = fade * (0.42 + 0.58 * Math.pow(Math.max(0, 1 - d * 0.8), 0.5));
+            var hs = 0;
+            var cc = mixHex(mixHex(cols[0], cols[2], tt), cols[1], glow), rr = pit * 0.5;
+            /* one continuous ramp: the dot radius grows smoothly with the colour (no rings, no steps), so the field reads as a soft gradient and not as lines */
+            if (moving) {
+              var mp = lerpMo(lerpMo(m0, m2, tt), m1, glow);
+              var proj = (x - w / 2) * ax + (y - h / 2) * ay;
+              var along = Math.sin(proj / 42 - t * mp.speed * 1.6);                 /* a wave travelling along the colour ramp */
+              var down = Math.sin(y / 34 - t * mp.speed * 2.4);               /* ripples that fall down the card */
+              var swell = Math.sin(t * 0.45 + proj / 200);                    /* the whole field slowly breathes */
+              var mix = along * (1 - 0.6 * mp.flow) + down * 0.6 * mp.flow;
+              v = Math.max(0, Math.min(1, v * (1 + mp.amp * 2.4 * swell)));
+              var e = v * v * (3 - 2 * v);
+              var r = rr * (0.08 + 0.52 * e) * (1 + mp.amp * 3.2 * mix);   /* ~±40% at the strongest, so the wave reads on a 10px grid */
+            } else {
+              var e = v * v * (3 - 2 * v);
+              var r = rr * (0.08 + 0.52 * e);
+            }
+            if (r < 0.45) continue;
+            g.fillStyle = cc;
+            g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+          }
+        }
+      }
+      if (window.ResizeObserver) new ResizeObserver(function () { drawDots(lastCols, performance.now() / 1000); }).observe(panel);
+      /* The dots keep moving while the card is on screen: 30 frames a second at most, paused when the card is off screen or the tab is hidden, and still under reduced motion. */
+      var dotsOn = true, dotsLast = 0, dotsRaf = 0;
+      if (window.IntersectionObserver) new IntersectionObserver(function (es) { dotsOn = es[0].isIntersecting; }).observe(panel);
+      function dotsLoop(ts) {
+        dotsRaf = requestAnimationFrame(dotsLoop);
+        if (!panel.isConnected || !dotsOn || document.hidden || still() || !lastCols) return;
+        if (ts - dotsLast < 33) return;
+        dotsLast = ts;
+        drawDots(lastCols, ts / 1000);
+      }
+      dotsRaf = requestAnimationFrame(dotsLoop);
 
       function paintAll() {
         var cols = spread(data.map(function (d) { return dayColour(d.temp, d.code); }));
@@ -553,16 +659,9 @@
         for (var i = 0; i <= 8; i++) {
           base.push(mixHex(cols[0], cols[2], i / 8) + ' ' + (i * 12.5) + '%');
         }
-        var t = cols[1];
-        paint.style.background =
-          'radial-gradient(circle at 50% 47%, ' +
-            t + ' 0%, ' +
-            rgbaOf(t, 0.95) + ' 24%, ' +
-            rgbaOf(t, 0.72) + ' 42%, ' +
-            rgbaOf(t, 0.34) + ' 60%, ' +
-            rgbaOf(t, 0) + ' 78%), ' +
-          'linear-gradient(107deg, ' + base.join(', ') + ')';
-        panel.style.color = inkFor(cols[1]);
+        lastCols = cols;
+        drawDots(cols, performance.now() / 1000);
+        panel.style.color = tok('--ink');
         panel.classList.toggle('is-est', !live);
 
         var bits = dateParts(data[1].date, lang[0]).map(function (b) {
@@ -572,7 +671,7 @@
           '<span class="ramp__row"' +
           (lang[2] === 'arabic' ? ' dir="rtl"' : '') +
           ' style="font-family:&quot;' + font + '&quot;,' +
-          (lang[2] === 'latin' ? 'serif' : 'sans-serif') + '">' +
+          (lang[2] === 'latin' ? 'serif' : 'sans-serif') + (font === 'Archivo' ? ';font-weight:800;font-stretch:112%' : '') + '">' +
           bits + '</span>';
         fnames.textContent = lang[1] + '   \u00b7   ' + font;
 
@@ -1435,10 +1534,10 @@
   var morphField = {
     id: 'morph-field',
     n: '08',
-    title: 'A field that starts with circles',
+    title: 'A field of shapes',
     question: 'How much can a surface change under the pointer before it stops being one surface?',
     note:
-      '<p>It starts as one thing: a field of coloured circles. Move across it ' +
+      '<p>It starts as a field of different coloured shapes. Move across it ' +
       'and each cell you touch becomes something else, once, and stays that way. ' +
       'Nothing resets on its own. After a minute the page is a composition you ' +
       'made by walking across it rather than by choosing anything.</p>' +
@@ -1476,7 +1575,7 @@
       var read = null, bar = null;
       if (big) {
         bar = el('div', 'morph__bar');
-        var reset = el('button', 'd-btn d-btn--quiet', 'All circles again');
+        var reset = el('button', 'd-btn d-btn--quiet', 'New field');
         reset.type = 'button';
         reset.addEventListener('click', function () { build(true); });
         read = el('span', 'morph__read', '');
@@ -1505,7 +1604,8 @@
         svg.setAttribute('aria-hidden', 'true');
 
         var path = document.createElementNS(NS, 'path');
-        path.setAttribute('d', morphPath(base, size));
+        var first = randomShape().r;                 /* every cell begins as its own shape; touching it rolls a new one */
+        path.setAttribute('d', morphPath(first, size));
         path.setAttribute('fill', tok(INK[cells.length % (INK.length - 1)]));
         svg.appendChild(path);
         cell.appendChild(svg);
@@ -1517,12 +1617,12 @@
           path.setAttribute('fill', tok(INK[Math.floor(Math.random() * INK.length)]));
         }
 
-        var cur = base.slice(), anim = 0, busy = false, done = false;
+        var cur = first.slice(), anim = 0, busy = false, done = false;
 
-        function morphTo(next) {
+        function morphTo(next, silent) {
           if (busy) return;
           busy = true;
-          if (!done) { done = true; touched++; report(); }
+          if (!done && !silent) { done = true; touched++; report(); }
           paint();
 
           if (still()) {
@@ -1550,6 +1650,7 @@
         cell.addEventListener('pointerover', function () { morphTo(randomShape()); });
         cell.addEventListener('click', function () { morphTo(randomShape()); });
         cell._stop = function () { if (anim) cancelAnimationFrame(anim); };
+        cell._roll = function () { morphTo(randomShape(), true); };      /* the entrance refresh: it does not count as a touch */
         return cell;
       }
 
@@ -1563,8 +1664,8 @@
         var innerH = field.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
         if (innerW < 40 || innerH < 40) return;
         var target = big ? 74 : 56;
-        var cols = Math.max(3, Math.round(innerW / target));
-        var rows = Math.max(2, Math.round(innerH / target));
+        var cols = big ? Math.max(3, Math.round(innerW / target)) : 3;      /* the card shows six shapes, a sheet shows as many as fit */
+        var rows = big ? Math.max(2, Math.round(innerH / target)) : 2;
         if (!force && cells.length === cols * rows) return;
 
         cells.forEach(function (c) { c._stop(); });
@@ -1583,6 +1684,16 @@
 
       stage.appendChild(wrap);
       build(true);
+      /* the first time the card is on screen, the nine shapes reroll one after another */
+      var introIO = null, introDone = false;
+      if (window.IntersectionObserver && !still()) {
+        introIO = new IntersectionObserver(function (en) {
+          if (introDone || !en[0] || !en[0].isIntersecting) return;
+          introDone = true; introIO.disconnect();
+          cells.forEach(function (c, k) { setTimeout(function () { if (c._roll) c._roll(); }, 120 + k * 110); });
+        }, { threshold: 0.5 });
+        introIO.observe(field);
+      }
       if (window.ResizeObserver) {
         ro = new ResizeObserver(function () {
           clearTimeout(timer);
@@ -1593,6 +1704,7 @@
 
       return function () {
         clearTimeout(timer);
+        if (introIO) introIO.disconnect();
         if (ro) ro.disconnect();
         cells.forEach(function (c) { c._stop(); });
       };

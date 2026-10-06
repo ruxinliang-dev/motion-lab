@@ -410,3 +410,29 @@
 /* the pressed one is a filled pill, so both passes of the pen come off */
 .ramp__city[aria-pressed="true"]::before,
 .ramp__city[aria-pressed="true"]::after{opacity:0}
+
+/* 01 layout: the date sits left, big, in the site's face; the three days run along the foot as three columns under a hairline, with no
+   vertical rules (those used to cut through the date on a short card) */
+.ramp__type{place-items:center start;padding:0 16px;align-content:center;padding-bottom:22%}
+.ramp__row{justify-content:flex-start;font-size:clamp(20px,7.2cqw,58px);letter-spacing:-.01em}
+.ramp__meta{padding:14px 16px 0;font-size:9px}
+.ramp__foot{padding:0 16px}
+.ramp__legend{column-gap:14px}
+.ramp__legend div{padding:10px 0 12px;border-top:1px solid color-mix(in srgb,currentColor 38%,transparent);gap:4px}
+.ramp__legend div + div{border-left:0}
+.ramp__legend b{opacity:.6;font-size:9px}
+.ramp__legend span{font-family:var(--font-body,inherit);font-size:clamp(15px,4.6cqw,24px);font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.ramp__legend em{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.02em;margin-top:3px}
+.ramp__bar{padding:11px 0}
+
+/* 01 as a dot panel: the paint layer is a canvas of dots on the card's own surface, and the old drift / vignette are gone */
+.ramp{background:var(--surface-2,var(--surface))}
+.ramp__paint{inset:0;animation:none;transition:none}
+.ramp__paint canvas{display:block;width:100%;height:100%}
+.ramp__grain{display:none}
+.ramp__type{padding-bottom:24%}
+
+/* the small card shows six shapes (3 x 2); keep every one fully inside the card, clear of the HOVER label and the number */
+.morph{padding:30px 18px 34px;gap:8px;grid-auto-rows:minmax(0,1fr)}
+.morph__cell{min-width:0;min-height:0}
+
