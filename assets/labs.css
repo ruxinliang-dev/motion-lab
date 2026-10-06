@@ -426,7 +426,7 @@
 .ramp__bar{padding:11px 0}
 
 /* 01 as a dot panel: the paint layer is a canvas of dots on the card's own surface, and the old drift / vignette are gone */
-.ramp{background:var(--surface-2,var(--surface))}
+.ramp{background:#f2eadc}
 .ramp__paint{inset:0;animation:none;transition:none}
 .ramp__paint canvas{display:block;width:100%;height:100%}
 .ramp__grain{display:none}

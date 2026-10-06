@@ -728,3 +728,18 @@ html.sheet-full .casesheet__panel{width:100%;border-radius:0;box-shadow:none}
 .pcard__art--keeplan .kpc-i:hover .kpc-feedback{transform:translateY(calc(var(--near,0)*-2px)) scale(calc(1 + var(--near,0)*.13));filter:none;transition:transform .3s cubic-bezier(.2,.7,.2,1)}
 :root[data-motion="off"] .pcard__art--keeplan .kpc-feedback{transform:none;transition:none}
 @media(prefers-reduced-motion:reduce){.pcard__art--keeplan .kpc-feedback{transform:none;transition:none}}
+
+/* Intro: align the contents with the headline and give the authorship two beats. */
+.page--intro .lead p{margin:0;font-size:inherit;line-height:1.55;max-width:none}
+.page--intro .lead p+p{margin-top:14px}
+@media(min-width:900px){
+  .page--intro > .wrap.hero{padding-top:clamp(60px,calc(60px + 3.8vh),100px)}
+  :root[data-guide="side"] .page--intro .guide{grid-area:2 / 2 / 5 / 3;margin-top:0;padding-top:0}
+  :root[data-guide="side"] .page--intro .guide a:first-child{padding-top:0}
+}
+@media(min-width:641px){
+  .page--intro .doodle .doodle__across{--aw:clamp(80px,7vw,105px)}
+  .page--intro .doodle p.doodle__t{max-width:none;font-size:11px;line-height:1.45}
+}
+
+@media(min-width:900px){:root[data-guide="side"] .page--intro .guide{margin-top:18px}}

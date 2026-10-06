@@ -567,6 +567,10 @@
       }
 
       var lastCols = null;
+      var waveClock = 0, waveSpeed = 1, waveHover = false;
+      panel.addEventListener('pointerenter', function () { waveHover = true; });
+      panel.addEventListener('pointerleave', function () { waveHover = false; });
+      panel.addEventListener('pointercancel', function () { waveHover = false; });
       /* The colour field is printed as a shape ramp on a square grid: yesterday travels to tomorrow across the card, today is a glow in the
          middle, and the printed element gets heavier with the colour (a speck, a ring, then dots that grow until they nearly touch). The panel
          fades out toward a rounded edge. */
@@ -594,7 +598,7 @@
         g.clearRect(0, 0, w, h);
         var moving = !still() && data && data.length > 2;
         var m0 = moving ? wxMotion(data[0].code) : null, m1 = moving ? wxMotion(data[1].code) : null, m2 = moving ? wxMotion(data[2].code) : null;
-        var pit = Math.max(8, Math.min(11, w / 30));
+        var pit = Math.max(4, Math.min(5.5, w / 65));
         var ang = 107 * Math.PI / 180, ax = Math.sin(ang), ay = -Math.cos(ang);
         var plen = Math.abs(w * ax) + Math.abs(h * ay);
         for (var j = 0; j * pit < h + pit; j++) {
@@ -609,23 +613,21 @@
             glow = glow * glow * (3 - 2 * glow);
             var v = fade * (0.42 + 0.58 * Math.pow(Math.max(0, 1 - d * 0.8), 0.5));
             var hs = 0;
-            var cc = mixHex(mixHex(cols[0], cols[2], tt), cols[1], glow), rr = pit * 0.5;
+            var cc = mixHex(mixHex(cols[0], cols[2], tt), cols[1], glow), rr = pit * 0.43;
             /* one continuous ramp: the dot radius grows smoothly with the colour (no rings, no steps), so the field reads as a soft gradient and not as lines */
             if (moving) {
-              var mp = lerpMo(lerpMo(m0, m2, tt), m1, glow);
-              var proj = (x - w / 2) * ax + (y - h / 2) * ay;
-              var along = Math.sin(proj / 42 - t * mp.speed * 1.6);                 /* a wave travelling along the colour ramp */
-              var down = Math.sin(y / 34 - t * mp.speed * 2.4);               /* ripples that fall down the card */
-              var swell = Math.sin(t * 0.45 + proj / 200);                    /* the whole field slowly breathes */
-              var mix = along * (1 - 0.6 * mp.flow) + down * 0.6 * mp.flow;
-              v = Math.max(0, Math.min(1, v * (1 + mp.amp * 2.4 * swell)));
+              // Broad, coherent water waves: fixed dot centres, gently changing radii.
+              var radial = Math.hypot((x - w * .35) / w, (y - h * .38) / h);
+              var ripple = Math.sin(radial * 15 - waveClock * .52);
+              var crossWave = Math.sin(x / w * 7 + y / h * 4 - waveClock * .34);
+              var wave = ripple * .78 + crossWave * .22;
               var e = v * v * (3 - 2 * v);
-              var r = rr * (0.08 + 0.52 * e) * (1 + mp.amp * 3.2 * mix);   /* ~±40% at the strongest, so the wave reads on a 10px grid */
+              var r = rr * (0.08 + 0.52 * e) * (1 + .38 * wave);
             } else {
               var e = v * v * (3 - 2 * v);
               var r = rr * (0.08 + 0.52 * e);
             }
-            if (r < 0.45) continue;
+            if (r < 0.18) continue;
             g.fillStyle = cc;
             g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
           }
@@ -639,8 +641,11 @@
         dotsRaf = requestAnimationFrame(dotsLoop);
         if (!panel.isConnected || !dotsOn || document.hidden || still() || !lastCols) return;
         if (ts - dotsLast < 33) return;
+        var waveDt = dotsLast ? Math.min(.08, (ts - dotsLast) / 1000) : 1 / 30;
+        waveSpeed += ((waveHover ? 3 : 1) - waveSpeed) * (1 - Math.exp(-waveDt * 3));
+        waveClock += waveDt * waveSpeed;
         dotsLast = ts;
-        drawDots(lastCols, ts / 1000);
+        drawDots(lastCols, waveClock);
       }
       dotsRaf = requestAnimationFrame(dotsLoop);
 
