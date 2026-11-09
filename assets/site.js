@@ -374,30 +374,31 @@
     }).join(' ');
   }
 
-  var easings = [
-    ['--e-standard', 'Default. Anything that just needs to arrive.'],
-    ['--e-out', 'Leaves fast, settles slowly. Cards, sheets, reveals.'],
-    ['--e-in-out', 'Symmetric, so it reads the same played backwards.'],
-    ['--e-spring', 'Overshoots and returns. Small controls only.'],
-    ['--e-in-out', 'Symbols build a ring. A quiet turn, then back again.']
+  /* The three colour studies from the reel parts page, drawn live by motion-token-cards.js (data-motion-study names the study). */
+  var tokenStudies = [   /* the reel parts page's studies, from Blur orbit on (her note) */
+    /* off the site (her note): ['blur', 'Blur orbit', '5.00 s loop', 'A white 2 on blue; a very soft mask melts it as it goes round, once every 5 s.'], */
+    ['blurw', 'Blur orbit, weight', '5.00 s loop', 'A 26, the blurred side bolder: 400 where it is sharp, 700 where it is softest.'],
+    ['grad', 'Gradient', '6.30 s loop', 'Two cones of light meet as a bow tie and fill the frame, seen through fluted glass.'],
+    ['room', 'Colour room', '6.24 s loop', 'A corridor of colour that keeps moving forward into its opening, after Clemens Mako.'],
+    ['field', 'Colour field', '12.00 s loop', 'A card of light on a deep blue, its side lights travelling round it.']
   ];
-
   var tokenBox = document.getElementById('tokens');
   if (tokenBox) {
-    var studyNames = ['Arrive', 'Release', 'Exchange', 'Rebound', 'Glyph Orbit'];
-    easings.forEach(function (pair, index) {
-      var card = el('button', 'token token--study');
+    tokenStudies.forEach(function (st) {
+      var card = el('button', 'token token--study token--colour');
       card.type = 'button';
-      card.dataset.motionStudy = index;
-      card.setAttribute('aria-label', 'Replay ' + studyNames[index] + ', ' + 'five' + '-second ' + pair[0] + ' study');
+      card.dataset.motionStudy = st[0];
+      card.setAttribute('aria-label', 'Open the ' + st[1] + ' study, a ' + st[2] + ', large');
       var stage = el('div', 'token__study');
       var canvas = el('canvas');
       canvas.setAttribute('aria-hidden', 'true');
       stage.appendChild(canvas);
       card.appendChild(stage);
-      card.appendChild(el('div', 'token__study-title', studyNames[index]));
-      card.appendChild(el('div', 'token__name', pair[0]));
-      card.appendChild(el('div', 'token__use', pair[1]));
+      var text = el('div', 'token__text');
+      text.appendChild(el('div', 'token__study-title', st[1]));
+      text.appendChild(el('div', 'token__name', st[2]));
+      text.appendChild(el('div', 'token__use', st[3]));
+      card.appendChild(text);
       tokenBox.appendChild(card);
     });
   }
