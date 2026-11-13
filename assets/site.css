@@ -1826,3 +1826,9 @@ input,textarea,select,[contenteditable]{cursor:auto}
 }
 .token__name--over{top:12px}
 .token__use--over{bottom:12px;color:rgba(255,255,255,.45)}
+
+/* Plain-text versions of the drawn sections (Creative coding, Visual system, Experiments) for readers and tools that do not run
+   scripts; hidden as soon as scripts run (has-js is set in the head before anything paints). */
+.js-fallback{margin:16px 0 0;padding-left:1.2em;color:var(--ink-2);line-height:1.5}
+.js-fallback li{margin:6px 0}
+.has-js .js-fallback{display:none}

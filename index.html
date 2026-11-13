@@ -12,7 +12,7 @@
      build eight canvases in the same breath, which read as a stutter. A timer in
      site.js releases it regardless, so a slow font can never keep the page hidden. -->
 <style>html.booting body{opacity:0}html.booted body{transition:opacity .6s cubic-bezier(.2,.7,.2,1)}html.ready body{opacity:1;transition:none}</style>
-<script>document.documentElement.classList.add('booting');setTimeout(function(){document.documentElement.classList.remove('booting')},3500)</script>
+<script>document.documentElement.classList.add('has-js');document.documentElement.classList.add('booting');setTimeout(function(){document.documentElement.classList.remove('booting')},3500)</script>
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +23,7 @@
      IoU .854; Inter Tight 800 was .853, and the genre decided it) -->
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=228">
+<link rel="stylesheet" href="assets/site.css?v=229">
 <link rel="stylesheet" href="assets/labs.css?v=20261005">
 <link rel="stylesheet" href="assets/keeplan.css?v=213">
 <link rel="stylesheet" href="assets/handdrawn-refinement.css?v=49">
@@ -125,6 +125,13 @@
             <div class="tokens" id="tokens">
             </div>
           </div>
+          <!-- the same studies as plain text, for readers and tools that do not run scripts -->
+          <ul class="js-fallback">
+            <li><b>Blur orbit, weight</b> (5.00 s loop). A 26, the blurred side bolder: 400 where it is sharp, 700 where it is softest.</li>
+            <li><b>Gradient</b> (6.30 s loop). Two cones of light meet as a bow tie and fill the frame, seen through fluted glass.</li>
+            <li><b>Colour room</b> (6.24 s loop). A corridor of colour that keeps moving forward into its opening, after Clemens Mako.</li>
+            <li><b>Colour field</b> (12.00 s loop). A card of light on a deep blue, its side lights travelling round it.</li>
+          </ul>
         </div>
       </article>
       <article class="page">
@@ -138,6 +145,14 @@
             </p>
           </div>
           <div class="bento" id="bento"></div>
+          <ul class="js-fallback">
+            <li><b>Motion</b>. A family of logistic curves. Tap to drop a shape, hold to see its colour, drag to throw it.</li>
+            <li><b>Color</b>. Three colours, nested, no edges: a ramp built by smoothstep. Pick a theme from the swatches.</li>
+            <li><b>Icon</b>. Icons drawn as dots on a honeycomb, each dot sized by how much of the icon covers it (r = pitch · coverage). Click for the next icon.</li>
+            <li><b>Halftone</b>. A word set in halftone dots. Click to type your own.</li>
+            <li><b>Gesture</b>. A lattice of dots bent by a gaussian under the pointer; one hidden dot is given away by the field (Δh · e^(-d² / 2σ²)).</li>
+            <li><b>Rain</b>. Rain on a slab in isometric view. Move the pointer for wind, tap for more rain.</li>
+          </ul>
         </div>
       </article>
 
@@ -151,6 +166,12 @@
             <h2>Experiments, one to four</h2>
             <p>Live and interactive. Play with them here, or open one for the notes.</p>
           </div>
+          <ul class="js-fallback">
+            <li><b>01 Three days as one colour</b>. Can yesterday, today and tomorrow read as one ramp and still leave you standing in today? Live New York weather from Open-Meteo.</li>
+            <li><b>02 Spring in a segmented control</b>. How much overshoot can a small control take before it reads as sloppy? 320 ms on a spring.</li>
+            <li><b>03 A field of shapes</b>. How much can a surface change under the pointer before it stops being one surface?</li>
+            <li><b>04 The button holds the wait</b>. Where should a one second wait live, in the button or on the page?</li>
+          </ul>
           <div class="grid" data-labs="0-3">
             <noscript>
               <p style="color:var(--ink-2)">
